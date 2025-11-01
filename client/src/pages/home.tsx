@@ -81,16 +81,23 @@ export default function Home() {
           </p>
           
           <div className="flex flex-wrap justify-center gap-4 mb-20">
-            <Link href="/dashboard" data-testid="link-dashboard">
-              <Button size="lg" className="text-lg px-8 h-12" data-testid="button-get-started">
-                Get Started Free
-              </Button>
-            </Link>
-            <Link href="/marketplace" data-testid="link-marketplace">
-              <Button size="lg" variant="outline" className="text-lg px-8 h-12" data-testid="button-explore-marketplace">
-                Explore Marketplace
-              </Button>
-            </Link>
+            <Button 
+              size="lg" 
+              className="text-lg px-8 h-12" 
+              data-testid="button-get-started"
+              onClick={() => window.location.href = '/api/login'}
+            >
+              Get Started Free
+            </Button>
+            <Button 
+              size="lg" 
+              variant="outline" 
+              className="text-lg px-8 h-12" 
+              data-testid="button-learn-more"
+              onClick={() => window.scrollBy({ top: 400, behavior: 'smooth' })}
+            >
+              Learn More
+            </Button>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-20">
@@ -107,15 +114,13 @@ export default function Home() {
             <h2 className="text-3xl md:text-4xl font-bold mb-12">Choose Your Studio</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {studios.map((studio) => (
-                <Link key={studio.id} href={`/studio/${studio.id}`} data-testid={`link-studio-${studio.id}`}>
-                  <Card className="p-6 hover-elevate active-elevate-2 cursor-pointer group">
-                    <div className={`w-16 h-16 rounded-lg bg-gradient-to-br ${studio.gradient} flex items-center justify-center mb-4 neon-glow-hover`}>
-                      <studio.icon className="w-8 h-8 text-white" />
-                    </div>
-                    <h3 className="text-xl font-semibold mb-2">{studio.name}</h3>
-                    <p className="text-muted-foreground text-sm">{studio.description}</p>
-                  </Card>
-                </Link>
+                <Card key={studio.id} className="p-6 hover-elevate active-elevate-2 cursor-pointer group" data-testid={`card-studio-${studio.id}`}>
+                  <div className={`w-16 h-16 rounded-lg bg-gradient-to-br ${studio.gradient} flex items-center justify-center mb-4 neon-glow-hover`}>
+                    <studio.icon className="w-8 h-8 text-white" />
+                  </div>
+                  <h3 className="text-xl font-semibold mb-2">{studio.name}</h3>
+                  <p className="text-muted-foreground text-sm">{studio.description}</p>
+                </Card>
               ))}
             </div>
           </div>

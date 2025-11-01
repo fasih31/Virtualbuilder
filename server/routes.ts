@@ -2,6 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { insertProjectSchema, insertMarketplaceItemSchema, insertConversationSchema } from "@shared/schema";
+import { setupAuth, isAuthenticated } from "./replitAuth";
 import OpenAI from "openai";
 import Anthropic from "@anthropic-ai/sdk";
 import { GoogleGenerativeAI } from "@google/genai";
@@ -12,13 +13,25 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
 export async function registerRoutes(app: Express): Promise<Server> {
   
-  // Projects API
-  app.get("/api/projects", async (req, res) => {
+  // Setup authentication
+  await setupAuth(app);
+
+  // Auth user endpoint
+  app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = (req as any).user?.id;
-      if (!userId) {
-        return res.status(401).json({ error: "Not authenticated" });
-      }
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      res.json(user);
+    } catch (error: any) {
+      console.error("Error fetching user:", error);
+      res.status(500).json({ message: "Failed to fetch user" });
+    }
+  });
+
+  // Projects API
+  app.get("/api/projects", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
       const projects = await storage.getProjectsByUser(userId);
       res.json(projects);
     } catch (error: any) {
@@ -38,12 +51,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/projects", async (req, res) => {
+  app.post("/api/projects", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = (req as any).user?.id;
-      if (!userId) {
-        return res.status(401).json({ error: "Not authenticated" });
-      }
+      const userId = req.user.claims.sub;
       const validatedData = insertProjectSchema.parse({ ...req.body, userId });
       const project = await storage.createProject(validatedData);
       res.json(project);
@@ -52,7 +62,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/projects/:id", async (req, res) => {
+  app.patch("/api/projects/:id", isAuthenticated, async (req, res) => {
     try {
       const project = await storage.updateProject(req.params.id, req.body);
       if (!project) {
@@ -64,7 +74,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/projects/:id", async (req, res) => {
+  app.delete("/api/projects/:id", isAuthenticated, async (req, res) => {
     try {
       const success = await storage.deleteProject(req.params.id);
       if (!success) {
@@ -89,12 +99,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/marketplace", async (req, res) => {
+  app.post("/api/marketplace", isAuthenticated, async (req: any, res) => {
     try {
-      const creatorId = (req as any).user?.id;
-      if (!creatorId) {
-        return res.status(401).json({ error: "Not authenticated" });
-      }
+      const creatorId = req.user.claims.sub;
       const validatedData = insertMarketplaceItemSchema.parse({ ...req.body, creatorId });
       const item = await storage.createMarketplaceItem(validatedData);
       res.json(item);
@@ -103,12 +110,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/marketplace/:id/clone", async (req, res) => {
+  app.post("/api/marketplace/:id/clone", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = (req as any).user?.id;
-      if (!userId) {
-        return res.status(401).json({ error: "Not authenticated" });
-      }
+      const userId = req.user.claims.sub;
       
       const item = await storage.getMarketplaceItem(req.params.id);
       if (!item) {
@@ -195,12 +199,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Conversations API
-  app.get("/api/conversations", async (req, res) => {
+  app.get("/api/conversations", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = (req as any).user?.id;
-      if (!userId) {
-        return res.status(401).json({ error: "Not authenticated" });
-      }
+      const userId = req.user.claims.sub;
       const conversations = await storage.getConversationsByUser(userId);
       res.json(conversations);
     } catch (error: any) {
@@ -208,12 +209,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/conversations", async (req, res) => {
+  app.post("/api/conversations", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = (req as any).user?.id;
-      if (!userId) {
-        return res.status(401).json({ error: "Not authenticated" });
-      }
+      const userId = req.user.claims.sub;
       const validatedData = insertConversationSchema.parse({ ...req.body, userId });
       const conversation = await storage.createConversation(validatedData);
       res.json(conversation);

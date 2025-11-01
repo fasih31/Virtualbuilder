@@ -4,6 +4,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { 
   Dialog,
   DialogContent,
@@ -12,17 +13,25 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
+import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, Search, Clock, Trash2, ExternalLink } from "lucide-react";
+import { Plus, Search, Clock, Trash2, ExternalLink, LogOut, User, ShoppingBag } from "lucide-react";
 import { Link } from "wouter";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import type { Project } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 
 const projectTypes = [
   { value: "ai", label: "AI Studio" },
@@ -39,6 +48,7 @@ export default function Dashboard() {
   const [newProjectName, setNewProjectName] = useState("");
   const [newProjectType, setNewProjectType] = useState<string>("ai");
   const { toast } = useToast();
+  const { user } = useAuth();
 
   const { data: projects = [], isLoading } = useQuery<Project[]>({
     queryKey: ["/api/projects"],
@@ -98,14 +108,62 @@ export default function Dashboard() {
     });
   };
 
+  const getUserInitials = () => {
+    if (!user) return "U";
+    const firstName = (user as any).firstName || "";
+    const lastName = (user as any).lastName || "";
+    return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase() || "U";
+  };
+
   return (
-    <div className="min-h-screen p-8">
-      <div className="max-w-7xl mx-auto">
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="text-4xl font-bold gradient-text mb-2">My Projects</h1>
-            <p className="text-muted-foreground">Manage and deploy your creations</p>
+    <div className="min-h-screen">
+      <header className="border-b p-4 sticky top-0 bg-background z-50">
+        <div className="max-w-7xl mx-auto flex items-center justify-between">
+          <Link href="/">
+            <h1 className="text-2xl font-bold gradient-text cursor-pointer" data-testid="link-home">VirtuBuild.ai</h1>
+          </Link>
+          
+          <div className="flex items-center gap-4">
+            <Link href="/marketplace">
+              <Button variant="ghost" data-testid="link-marketplace-header">
+                <ShoppingBag className="w-4 h-4 mr-2" />
+                Marketplace
+              </Button>
+            </Link>
+            
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="gap-2" data-testid="button-user-menu">
+                  <Avatar className="w-8 h-8">
+                    <AvatarImage src={(user as any)?.profileImageUrl || ""} />
+                    <AvatarFallback>{getUserInitials()}</AvatarFallback>
+                  </Avatar>
+                  <span>{(user as any)?.firstName || (user as any)?.email || "User"}</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem disabled>
+                  <User className="w-4 h-4 mr-2" />
+                  {(user as any)?.email || "Account"}
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => window.location.href = "/api/logout"} data-testid="button-logout">
+                  <LogOut className="w-4 h-4 mr-2" />
+                  Log Out
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
+        </div>
+      </header>
+
+      <div className="p-8">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex items-center justify-between mb-8">
+            <div>
+              <h2 className="text-4xl font-bold gradient-text mb-2">My Projects</h2>
+              <p className="text-muted-foreground">Manage and deploy your creations</p>
+            </div>
           
           <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
             <DialogTrigger asChild>
@@ -237,6 +295,7 @@ export default function Dashboard() {
             ))}
           </div>
         )}
+        </div>
       </div>
     </div>
   );

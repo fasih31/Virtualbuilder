@@ -1,6 +1,6 @@
 import { 
   type User, 
-  type InsertUser, 
+  type UpsertUser, 
   type Project, 
   type InsertProject,
   type MarketplaceItem,
@@ -11,10 +11,9 @@ import {
 import { randomUUID } from "crypto";
 
 export interface IStorage {
-  // Users
+  // Users (Replit Auth)
   getUser(id: string): Promise<User | undefined>;
-  getUserByUsername(username: string): Promise<User | undefined>;
-  createUser(user: InsertUser): Promise<User>;
+  upsertUser(user: UpsertUser): Promise<User>;
   updateUserSubscription(id: string, tier: string, stripeCustomerId?: string): Promise<User | undefined>;
 
   // Projects
@@ -53,28 +52,28 @@ export class MemStorage implements IStorage {
     this.conversations = new Map();
   }
 
-  // Users
+  // Users (Replit Auth)
   async getUser(id: string): Promise<User | undefined> {
     return this.users.get(id);
   }
 
-  async getUserByUsername(username: string): Promise<User | undefined> {
-    return Array.from(this.users.values()).find(
-      (user) => user.username === username,
-    );
-  }
-
-  async createUser(insertUser: InsertUser): Promise<User> {
-    const id = randomUUID();
-    const user: User = { 
-      ...insertUser, 
-      id,
-      email: insertUser.email || null,
-      subscriptionTier: "free",
-      stripeCustomerId: null,
-      createdAt: new Date()
+  async upsertUser(userData: UpsertUser): Promise<User> {
+    const existing = this.users.get(userData.id!);
+    const now = new Date();
+    const user: User = {
+      ...existing,
+      ...userData,
+      id: userData.id!,
+      email: userData.email || null,
+      firstName: userData.firstName || null,
+      lastName: userData.lastName || null,
+      profileImageUrl: userData.profileImageUrl || null,
+      subscriptionTier: existing?.subscriptionTier || "free",
+      stripeCustomerId: existing?.stripeCustomerId || null,
+      createdAt: existing?.createdAt || now,
+      updatedAt: now,
     };
-    this.users.set(id, user);
+    this.users.set(user.id, user);
     return user;
   }
 
