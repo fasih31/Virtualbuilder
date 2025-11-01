@@ -1,0 +1,308 @@
+Perfect — I’ll turn your Current Implementation Status into a developer-ready complete implementation plan + prioritized backlog + technical specs so your team can pick up work immediately.
+
+I’ll include:
+	•	Prioritized feature backlog (with clear acceptance criteria)
+	•	Developer tasks (frontend, backend, infra)
+	•	API & endpoint specs (AI, deployment, marketplace, auth)
+	•	DB schema suggestions
+	•	CI/CD / deployment steps (Replit / Netlify / GitHub Actions)
+	•	Testing & QA checklist
+	•	UX component list & page wireframe notes
+	•	Quick sample code snippets for AI calls, deployments, and RAG
+	•	Risk & security notes
+
+All right — let’s go.
+
+1) High-level priorities (Immediate → Low)
+	1.	AI Integration (Critical) — implement real AI model calls + prompt builder + multi-model switching + RAG.
+	2.	Code Generation (High) — integrate AI responses into code outputs for all studios; make generated code load into Monaco and preview.
+	3.	Deployment Pipeline (High) — enable one-click deploy to Replit / Netlify / GitHub + custom domain + SSL provisioning.
+	4.	Website Studio features (High) — framework selector, drag/drop builder, section library, SEO tooling.
+	5.	Studio Integrations (Medium) — Bot platform connectors, Game engine tools, Web3 wallet + contract deploy.
+	6.	Marketplace & Publishing (Medium) — publish/clone/remix, rating system, credits.
+	7.	Advanced features (Lower) — real-time collaboration, analytics, enterprise features.
+
+2) Sprint-ready prioritized backlog (with acceptance criteria)
+
+Each item: Title — Owner — Est (dev days) — Acceptance Criteria
+
+Sprint 1 (AI + Code Generation) — 2–3 weeks
+	1.	AI Provider Layer — Backend
+	•	Est: 2 days
+	•	Implement provider-agnostic layer: aiProvider service supporting OpenAI & Google Gemini (and placeholders for Anthropic/Cohere).
+	•	Acceptance: Endpoint POST /api/ai/generate accepts {model, prompt, temperature, maxTokens, contextDocs?} and returns {id, content, usage}.
+	2.	API Key Manager (Vault) — Backend
+	•	Est: 1 day
+	•	Secure storage of per-user model keys (encrypted in DB).
+	•	Acceptance: Users can add/remove keys; keys not returned in plain text.
+	3.	Prompt Builder UI — Frontend
+	•	Est: 3 days
+	•	Visual prompt editor with variables, test-run, save templates.
+	•	Acceptance: User can create, save, test a prompt; response shown in preview pane.
+	4.	Multi-model Switcher UI — Frontend + Backend
+	•	Est: 1 day
+	•	UI to select model for generation.
+	•	Acceptance: Changing model updates API call; responses show model name.
+	5.	Code Generation Pipeline — Frontend + Backend
+	•	Est: 4 days
+	•	Generate project files from prompt; create ZIP & persist project snapshot.
+	•	Acceptance: User enters a prompt, system returns code files viewable in Monaco and downloadable as ZIP.
+	6.	RAG basic implementation (Vector Store) — Backend
+	•	Est: 4 days
+	•	Use embeddings to index uploaded docs. Provide POST /api/ai/rag to include docs in generation.
+	•	Acceptance: User can upload docs, system indexes and includes relevant docs as context during generation.
+
+Sprint 2 (Preview & Deploy) — 2 weeks
+	1.	Live Preview & Run — Frontend
+	•	Est: 3 days
+	•	Run project in isolated sandbox (Replit run or local container) and show preview.
+	•	Acceptance: Clicking “Preview” builds and opens preview URL.
+	2.	Replit / Netlify Integration (deploy API) — Backend
+	•	Est: 4 days
+	•	OAuth/connectors for Replit and Netlify, support push & deploy.
+	•	Acceptance: Users connect account → push repo/template → get deploy URL and status webhook.
+	3.	Custom domain + SSL — Backend/Infra
+	•	Est: 3 days
+	•	Support setting custom domain; create DNS instructions; automate SSL via Netlify/Cloudflare API.
+	•	Acceptance: User can set domain; platform verifies and shows HTTPS working.
+	4.	Project Export (Zip / GitHub Push) — Backend
+	•	Est: 2 days
+	•	Acceptance: Exported ZIP is correct; GitHub push creates repo with commit.
+
+Sprint 3 (Website Studio & Editor) — 2–3 weeks
+	1.	Framework Selector & Starter Templates — Frontend
+	•	Est: 3 days
+	•	Acceptance: User can pick React/Next/Tailwind/Flask, and apply starter template.
+	2.	Drag-and-Drop Section Builder — Frontend
+	•	Est: 6 days
+	•	Acceptance: User can add/remove custom sections; built site updates preview and code.
+	3.	SEO Assistant & Sitemap Generator — Backend + Frontend
+	•	Est: 3 days
+	•	Acceptance: SEO suggestions generated; sitemap.xml & robots.txt available in build.
+
+Sprint 4 (Bot/Game/Web3) — 3+ weeks
+	•	Implement platform connectors for bots, sprite generation, Web3 smart contract templates, wallet connect, and audit checks.
+
+Sprint 5 (Marketplace + Collaboration + Analytics)
+	•	Publish workflow, payment split, rating, collaboration via WebSockets (presence, live editing), and analytics dashboards.
+
+3) API / Endpoints (core)
+
+Auth & User
+	•	POST /api/auth/signup — create user
+	•	POST /api/auth/login — login (JWT)
+	•	GET /api/auth/me — get profile
+
+AI
+	•	POST /api/ai/generate
+Body: { model, modelKeyId?, prompt, temperature?, maxTokens?, projectId?, useRag?: boolean }
+Response: { requestId, output: string, files?: [{path, content}], tokens }
+	•	POST /api/ai/upload-doc — attach docs for RAG
+Body: multipart file + { projectId }
+Response: { docId }
+	•	POST /api/ai/rag-query — query vector store
+Body: { query, topK }
+Response: { results: [{docId, score, snippet}] }
+
+Projects
+	•	POST /api/projects — create project (type: web/ai/bot/game/web3)
+	•	GET /api/projects/{id} — project detail (files, build status)
+	•	POST /api/projects/{id}/generate — trigger code generation (from prompt/template)
+	•	POST /api/projects/{id}/export — zip/generate repo
+	•	POST /api/projects/{id}/deploy — deploy (provider, options)
+
+Deploy / Integrations
+	•	POST /api/integrations/replit/connect — OAuth connect
+	•	POST /api/integrations/netlify/deploy — pushes and triggers Netlify build
+	•	POST /api/integrations/github/push — create repo & push
+
+Marketplace
+	•	GET /api/marketplace/templates
+	•	POST /api/marketplace/templates — publish template
+	•	POST /api/marketplace/templates/{id}/clone — clone template to user
+
+4) Database schema (core tables)
+
+Use PostgreSQL. Simplified version:
+	•	users (id, email, hashed_password, name, created_at, role)
+	•	api_keys (id, user_id, provider, encrypted_key, scopes, created_at)
+	•	projects (id, user_id, type, title, description, config(json), created_at, updated_at)
+	•	project_files (id, project_id, path, content, version, last_modified)
+	•	builds (id, project_id, status, log, deploy_url, provider, created_at, finished_at)
+	•	ai_requests (id, user_id, project_id, model, prompt, response, tokens, status, created_at)
+	•	docs (id, user_id, project_id, filename, vector_meta, uploaded_at)
+	•	templates (id, user_id, title, category, price, rating, metadata)
+	•	marketplace_reviews (id, template_id, user_id, rating, text)
+	•	teams / team_members for collaboration
+	•	audit_logs for admin.
+
+5) Vector store / RAG details
+	•	Embeddings provider: OpenAI embeddings or alternative (Cohere, etc.)
+	•	Storage: Use Supabase vector extension or Pinecone (if budget) or Weaviate (self-host).
+	•	Indexing flow:
+	1.	User uploads doc → backend extracts text (pdf/txt/docx).
+	2.	Chunk text (500-1000 tokens) with overlap.
+	3.	Generate embeddings and store with metadata.
+	4.	On generation, query top-k relevant chunks and append to prompt either as system context or with citation blocks.
+
+Prompt template example (pseudo):
+
+System: You are an assistant building code. Use only the documents provided.
+Context: <<RAG_DOCS>>
+User: <<USER_PROMPT>>
+
+6) AI model code examples (node.js / express)
+
+OpenAI (pseudo):
+
+// server/controllers/ai.js
+const { OpenAIApi, Configuration } = require('openai');
+
+async function generate(req, res) {
+  const { model, prompt, maxTokens = 800, temperature = 0.2 } = req.body;
+  const config = new Configuration({ apiKey: process.env.OPENAI_KEY });
+  const client = new OpenAIApi(config);
+  const response = await client.createChatCompletion({
+    model,
+    messages: [{ role: 'user', content: prompt }],
+    max_tokens: maxTokens,
+    temperature,
+  });
+  return res.json({ output: response.data.choices[0].message.content });
+}
+
+Gemini (pseudo HTTP example):
+Use the official client or REST. Pattern: send a request with prompt and options; handle streaming if supported.
+
+NOTE: adapt to the provider’s latest SDK—wrap provider calls behind aiProvider to swap easily.
+
+7) Monaco Editor integration tips (frontend)
+	•	Use @monaco-editor/react with a file explorer component.
+	•	When generated code returns multiple files, open in tabs.
+	•	Add read-only mode for marketplace templates.
+	•	Add format and lint actions (Prettier, ESLint) invoked client-side.
+
+8) Deployment & CI/CD (developer steps)
+
+Replit
+	•	Option A: Use Replit REST API to create a repl by pushing zipped project (Replit’s API supports importing GitHub repo).
+	•	Option B: Provide users a GitHub repo and instruct to import to Replit.
+
+Netlify
+	•	Create repo in GitHub via your app → call Netlify Deploy API to create site and trigger build.
+
+GitHub Actions workflow (auto-deploy)
+	•	When POST /api/projects/{id}/deploy triggers, push to repo and create commit → GitHub Actions build triggers to Netlify/Vercel.
+
+CI/CD checklist
+	•	Unit tests pass (Jest / PyTest)
+	•	Linting enforced (ESLint / Prettier)
+	•	Integration tests for deployment (mock deploy)
+	•	Automated E2E smoke test (Cypress) for new deploys.
+
+9) Security & compliance notes
+	•	Encrypt API keys at rest (AES-256). Never return keys to frontend.
+	•	Use short-lived tokens for provider calls where possible.
+	•	Sanitize user uploads; scan for malware.
+	•	Rate limit AI endpoints to prevent abuse (Stripe usage and credits).
+	•	Implement role-based access and project ownership.
+
+10) UI / UX component & page mapping (dev-ready)
+
+Global components
+	•	Header (search, user menu)
+	•	Left side project explorer (files, assets)
+	•	Monaco code editor with tabs
+	•	Right side live preview (iframe)
+	•	VirtuCopilot floating widget modal
+	•	Prompt builder drawer
+	•	Deploy / Export modal
+	•	Activity / build logs panel
+
+Pages
+	•	/ — Home / marketing
+	•	/studio/ai — AI Studio main
+	•	/studio/web — Website Studio
+	•	/studio/bot — Bot Studio
+	•	/studio/game — Game Studio
+	•	/studio/web3 — Web3 Studio
+	•	/dashboard/projects — Project list
+	•	/project/:id — Project workspace (explorer, editor, preview, deploy)
+	•	/marketplace — Templates
+	•	/settings/integrations — Connect Replit/Netlify/GitHub/API keys
+
+11) QA / Testing checklist (must pass before release)
+	•	Unit tests for backend services (AI provider mock, RAG).
+	•	Integration tests for:
+	•	Prompt → generate → files creation
+	•	Upload doc → vector index → relevant retrieval
+	•	Deploy flow end-to-end (mock provider or sandbox)
+	•	UI tests:
+	•	Monaco loads with multi-file
+	•	Drag/drop builder works and updates preview
+	•	Prompt builder saves and loads templates
+	•	Security tests:
+	•	Penetration test for file uploads
+	•	Secrets leak scanning
+	•	Load testing on AI endpoints to ensure rate limiting.
+
+12) Sample Acceptance Criteria examples (detailed)
+
+Feature: POST /api/ai/generate
+	•	Given a user with valid auth and an API key, when they submit a prompt and select gemini model, then the server calls the provider, returns generated code, stores the ai_request record with tokens used, and the frontend displays output and writes files to the project workspace.
+
+Feature: Deploy to Netlify
+	•	Given connected Netlify account, when user clicks “Deploy,” the system pushes to GitHub, Netlify receives webhook, Netlify builds successfully and returns site URL, displayed in project builds list.
+
+13) Staffing & Roles (recommendation)
+	•	1× Backend Engineer (Node.js / FastAPI) — AI provider, RAG, DB, integrations
+	•	1× Frontend Engineer (React + Next.js) — Monaco integrations, builders, preview
+	•	1× DevOps (CI/CD, Replit/Netlify, Cloud infra)
+	•	1× Fullstack (utility, marketplace)
+	•	1× Designer (UI kit, Figma)
+	•	1× QA/Tester
+
+14) Small code snippets: RAG flow (pseudo)
+
+// 1. Upload doc -> chunk -> embed -> save vectors
+const text = extractText(file);
+const chunks = chunkText(text, 800, 200);
+const embeddings = await embedTexts(chunks); // via provider
+await vectorStore.upsert(chunks.map((c,i)=>({id: uuid(), text:c, emb:embeddings[i], meta:{docId}})));
+
+// 2. On generation
+const relevant = await vectorStore.query(queryEmbedding, topK=5);
+const context = relevant.map(r=>r.text).join('\n---\n');
+const prompt = `Use the following docs:\n${context}\n\nUser: ${userPrompt}`;
+const out = await aiProvider.generate({prompt});
+
+15) Risks & Mitigations
+	•	API costs / quotas — implement caching of prompts, re-use responses, expose model selection (cheaper embeddings/ models for free tier).
+	•	Abuse (malicious code generation) — content moderation, warn users, disable public deploys for flagged projects.
+	•	Vendor lock-in — abstract aiProvider and deployProvider layers.
+
+16) Next immediate actionable checklist (what your devs should start doing right now)
+	1.	Implement aiProvider abstraction + simple OpenAI/Gemini adapter (server).
+	2.	Build POST /api/ai/generate and POST /api/ai/upload-doc.
+	3.	Add a small demo RAG flow: upload a PDF -> index -> query from prompt.
+	4.	Wire Monaco to accept generated files from ai/generate and show them.
+	5.	Add Replit OAuth or Netlify quick deploy connector (choose one first).
+	6.	Add logging & metrics for AI usage, token tracking.
+	7.	Build a simple “Generate Website from Prompt” button in Website Studio to demo end-to-end flow.
+
+17) Example feature user flow (end-to-end)
+
+User: “Create a 3-page React portfolio with a blog and chatbot”
+	1.	User selects Website Studio → Framework React → clicks “Create from prompt”.
+	2.	Frontend sends POST /api/projects → POST /api/ai/generate with prompt and RAG context.
+	3.	Backend calls model, returns files → backend writes project_files.
+	4.	Frontend loads files in Monaco and shows preview iframe (runs via sandbox).
+	5.	User clicks Deploy → POST /api/projects/:id/deploy to Netlify → build logs show → successful deploy URL returned.
+
+⸻
+
+If you want, next I can:
+	1.	Produce an exact file & folder structure (Next.js + Express/Node) including sample package.json, environment variables, and dev scripts — ready to copy into a repo.
+	2.	Produce a detailed Figma-ready page by page wireframe spec (component list + layout grid + copy) for your designer.
+
+Which of those should I generate now — the code repo skeleton or the Figma UI spec? (I’ll produce one immediately in this reply if you say which.)

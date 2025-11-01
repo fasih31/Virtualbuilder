@@ -9,9 +9,31 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import { deploymentService } from "./deploymentService";
 import JSZip from "jszip";
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
+// Lazy-load AI clients only when API keys are available
+let openai: OpenAI | null = null;
+let anthropic: Anthropic | null = null;
+let genAI: GoogleGenerativeAI | null = null;
+
+function getOpenAI() {
+  if (!openai && process.env.OPENAI_API_KEY) {
+    openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+  }
+  return openai;
+}
+
+function getAnthropic() {
+  if (!anthropic && process.env.ANTHROPIC_API_KEY) {
+    anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+  }
+  return anthropic;
+}
+
+function getGemini() {
+  if (!genAI && process.env.GEMINI_API_KEY) {
+    genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+  }
+  return genAI;
+}
 
 export async function registerRoutes(app: Express): Promise<Server> {
   
@@ -155,17 +177,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let response;
 
       switch (provider) {
-        case "openai":
-          const openaiResponse = await openai.chat.completions.create({
+        case "openai": {
+          const client = getOpenAI();
+          if (!client) {
+            return res.status(503).json({ 
+              error: "OpenAI API key not configured. Please set OPENAI_API_KEY environment variable." 
+            });
+          }
+          const openaiResponse = await client.chat.completions.create({
             model: model || "gpt-4o-mini",
             messages: messages,
             stream: false,
           });
           response = openaiResponse.choices[0].message.content;
           break;
+        }
 
-        case "anthropic":
-          const anthropicResponse = await anthropic.messages.create({
+        case "anthropic": {
+          const client = getAnthropic();
+          if (!client) {
+            return res.status(503).json({ 
+              error: "Anthropic API key not configured. Please set ANTHROPIC_API_KEY environment variable." 
+            });
+          }
+          const anthropicResponse = await client.messages.create({
             model: model || "claude-3-5-sonnet-20241022",
             max_tokens: 4096,
             messages: messages.filter((m: any) => m.role !== "system"),
@@ -175,9 +210,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
             ? anthropicResponse.content[0].text 
             : "";
           break;
+        }
 
-        case "gemini":
-          const geminiModel = genAI.getGenerativeModel({ model: model || "gemini-1.5-flash" });
+        case "gemini": {
+          const client = getGemini();
+          if (!client) {
+            return res.status(503).json({ 
+              error: "Gemini API key not configured. Please set GEMINI_API_KEY environment variable." 
+            });
+          }
+          const geminiModel = client.getGenerativeModel({ model: model || "gemini-1.5-flash" });
           const chat = geminiModel.startChat({
             history: messages.slice(0, -1).map((m: any) => ({
               role: m.role === "assistant" ? "model" : "user",
@@ -188,6 +230,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const geminiResponse = await chat.sendMessage(lastMessage.content);
           response = geminiResponse.response.text();
           break;
+        }
 
         default:
           return res.status(400).json({ error: "Invalid AI provider" });
@@ -261,11 +304,70 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { prompt, language = "javascript", provider = "openai" } = req.body;
 
+      const systemPrompt = `You are an expert code generator. Generate clean, well-documented ${language} code based on the user's requirements. Only return the code, no explanations.`;
+      const messages = [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: prompt }
+      ];
+
+      let code;
+
+      switch (provider) {
+        case "openai": {
+          const client = getOpenAI();
+          if (!client) {
+            return res.status(503).json({ 
+              error: "OpenAI API key not configured. Please set OPENAI_API_KEY environment variable." 
+            });
+          }
+          const openaiResponse = await client.chat.completions.create({
+            model: "gpt-4o-mini",
+            messages: messages,
+          });
+          code = openaiResponse.choices[0].message.content;
+          break;
+        }
+
+        case "anthropic": {
+          const client = getAnthropic();
+          if (!client) {
+            return res.status(503).json({ 
+              error: "Anthropic API key not configured. Please set ANTHROPIC_API_KEY environment variable." 
+            });
+          }
+          const anthropicResponse = await client.messages.create({
+            model: "claude-3-5-sonnet-20241022",
+            max_tokens: 4096,
+            messages: [{ role: "user", content: prompt }],
+            system: systemPrompt,
+          });
+          code = anthropicResponse.content[0].type === "text" 
+            ? anthropicResponse.content[0].text 
+            : "";
+          break;
+        }
+
+        default:
+          return res.status(400).json({ error: "Invalid provider" });
+      }
+
+      res.json({ code, provider });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
 
   // Web3 Contract Generation
   app.post("/api/web3/create", isAuthenticated, async (req, res) => {
     try {
       const { template, name, parameters } = req.body;
+      
+      const client = getOpenAI();
+      if (!client) {
+        return res.status(503).json({ 
+          error: "OpenAI API key not configured. Please set OPENAI_API_KEY environment variable." 
+        });
+      }
       
       const systemPrompt = `You are a Solidity smart contract expert. Generate secure, well-documented smart contracts based on the user's requirements. Follow best practices and include comments.`;
       
@@ -278,7 +380,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         contractPrompt = req.body.prompt || "Create a basic smart contract";
       }
 
-      const response = await openai.chat.completions.create({
+      const response = await client.chat.completions.create({
         model: "gpt-4o-mini",
         messages: [
           { role: "system", content: systemPrompt },
@@ -297,9 +399,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { code } = req.body;
 
+      const client = getOpenAI();
+      if (!client) {
+        return res.status(503).json({ 
+          error: "OpenAI API key not configured. Please set OPENAI_API_KEY environment variable." 
+        });
+      }
+
       const auditPrompt = `Analyze this Solidity smart contract for security vulnerabilities, gas optimization issues, and best practice violations:\n\n${code}`;
 
-      const response = await openai.chat.completions.create({
+      const response = await client.chat.completions.create({
         model: "gpt-4o-mini",
         messages: [
           { role: "system", content: "You are a smart contract security auditor. Provide detailed security analysis." },
@@ -435,46 +544,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const ratings = await storage.getItemRatings(req.params.itemId);
       res.json(ratings);
-    } catch (error: any) {
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-
-      const systemPrompt = `You are an expert code generator. Generate clean, well-documented ${language} code based on the user's requirements. Only return the code, no explanations.`;
-      const messages = [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: prompt }
-      ];
-
-      let code;
-
-      switch (provider) {
-        case "openai":
-          const openaiResponse = await openai.chat.completions.create({
-            model: "gpt-4o-mini",
-            messages: messages,
-          });
-          code = openaiResponse.choices[0].message.content;
-          break;
-
-        case "anthropic":
-          const anthropicResponse = await anthropic.messages.create({
-            model: "claude-3-5-sonnet-20241022",
-            max_tokens: 4096,
-            messages: [{ role: "user", content: prompt }],
-            system: systemPrompt,
-          });
-          code = anthropicResponse.content[0].type === "text" 
-            ? anthropicResponse.content[0].text 
-            : "";
-          break;
-
-        default:
-          return res.status(400).json({ error: "Invalid provider" });
-      }
-
-      res.json({ code, provider });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
