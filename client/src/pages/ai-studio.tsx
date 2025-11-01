@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
@@ -11,6 +10,8 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Brain, Sparkles, Code, Send, Download, Play } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { GuestBanner } from "@/components/GuestBanner";
+import { useAuth } from "@/hooks/useAuth";
 
 const llmProviders = [
   { value: "openai", label: "OpenAI GPT-4", icon: "🤖" },
@@ -36,6 +37,7 @@ export default function AIStudio() {
   const [systemPrompt, setSystemPrompt] = useState("");
   const [testPrompt, setTestPrompt] = useState("");
   const [testResponse, setTestResponse] = useState("");
+  const { isGuest } = useAuth();
 
   const createProject = useMutation({
     mutationFn: async (data: any) => {
@@ -68,13 +70,14 @@ export default function AIStudio() {
   });
 
   return (
-    <div className="min-h-screen p-6">
-      <div className="max-w-7xl mx-auto">
-        <div className="flex items-center gap-3 mb-8">
-          <Brain className="w-8 h-8 text-primary" />
-          <h1 className="text-3xl font-bold gradient-text">AI Studio</h1>
-          <Badge variant="secondary" className="ml-auto">Powered by VirtuCopilot</Badge>
-        </div>
+    <div className="min-h-screen">
+      <div className="border-b p-4">
+        <h1 className="text-2xl font-bold gradient-text">AI Studio</h1>
+        <p className="text-muted-foreground">Build intelligent AI applications - 100% Free</p>
+      </div>
+
+      <div className="p-6 max-w-7xl mx-auto">
+        {isGuest && <GuestBanner />}
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <Card className="lg:col-span-2 p-6">

@@ -32,26 +32,17 @@ function Router() {
 
   return (
     <Switch>
-      {!isAuthenticated ? (
-        <>
-          <Route path="/" component={Home} />
-          <Route component={Home} />
-        </>
-      ) : (
-        <>
-          <Route path="/" component={Dashboard} />
-          <Route path="/dashboard" component={Dashboard} />
-          <Route path="/studio/:type" component={Studio} />
-          <Route path="/studio/:type/:id" component={Studio} />
-          <Route path="/marketplace" component={Marketplace} />
-          <Route path="/ai-studio" component={AIStudio} />
-          <Route path="/website-studio" component={WebsiteStudio} />
-          <Route path="/bot-studio" component={BotStudio} />
-          <Route path="/game-studio" component={GameStudio} />
-          <Route path="/web3-studio" component={Web3Studio} />
-          <Route component={NotFound} />
-        </>
-      )}
+      <Route path="/" component={Home} />
+      <Route path="/dashboard" component={Dashboard} />
+      <Route path="/studio/:type" component={Studio} />
+      <Route path="/studio/:type/:id" component={Studio} />
+      <Route path="/marketplace" component={Marketplace} />
+      <Route path="/ai-studio" component={AIStudio} />
+      <Route path="/website-studio" component={WebsiteStudio} />
+      <Route path="/bot-studio" component={BotStudio} />
+      <Route path="/game-studio" component={GameStudio} />
+      <Route path="/web3-studio" component={Web3Studio} />
+      <Route component={NotFound} />
     </Switch>
   );
 }

@@ -92,15 +92,16 @@ export default function Home() {
             >
               Get Started Free
             </Button>
-            <Button
-              size="lg"
-              variant="outline"
-              className="text-lg px-8 h-12"
-              data-testid="button-learn-more"
-              onClick={() => window.scrollBy({ top: 400, behavior: 'smooth' })}
-            >
-              Learn More
-            </Button>
+            <Link href="/ai-studio">
+              <Button
+                size="lg"
+                variant="outline"
+                className="text-lg px-8 h-12"
+                data-testid="button-try-demo"
+              >
+                Try Demo (No Login)
+              </Button>
+            </Link>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-20">
@@ -117,13 +118,18 @@ export default function Home() {
             <h2 className="text-3xl md:text-4xl font-bold mb-12">Choose Your Studio</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {studios.map((studio) => (
-                <Card key={studio.id} className="p-6 hover-elevate active-elevate-2 cursor-pointer group" data-testid={`card-studio-${studio.id}`}>
-                  <div className={`w-16 h-16 rounded-lg bg-gradient-to-br ${studio.gradient} flex items-center justify-center mb-4 neon-glow-hover`}>
-                    <studio.icon className="w-8 h-8 text-white" />
-                  </div>
-                  <h3 className="text-xl font-semibold mb-2">{studio.name}</h3>
-                  <p className="text-muted-foreground text-sm">{studio.description}</p>
-                </Card>
+                <Link key={studio.id} href={`/${studio.id}-studio`}>
+                  <Card className="p-6 hover-elevate active-elevate-2 cursor-pointer group" data-testid={`card-studio-${studio.id}`}>
+                    <div className={`w-16 h-16 rounded-lg bg-gradient-to-br ${studio.gradient} flex items-center justify-center mb-4 neon-glow-hover`}>
+                      <studio.icon className="w-8 h-8 text-white" />
+                    </div>
+                    <h3 className="text-xl font-semibold mb-2">{studio.name}</h3>
+                    <p className="text-muted-foreground text-sm mb-4">{studio.description}</p>
+                    <Button className="w-full" variant="outline">
+                      Try Now (Free)
+                    </Button>
+                  </Card>
+                </Link>
               ))}
             </div>
           </div>

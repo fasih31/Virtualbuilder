@@ -241,13 +241,14 @@ export default function Dashboard() {
           </Select>
         </div>
 
-        {/* Analytics Overview */}
+        {/* Analytics Overview - Everything is FREE */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
           <Card className="p-4">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Total Projects</p>
                 <p className="text-2xl font-bold">{projects?.length || 0}</p>
+                <p className="text-xs text-green-500 mt-1">Unlimited Free</p>
               </div>
               <Activity className="w-8 h-8 text-primary opacity-50" />
             </div>
@@ -256,7 +257,8 @@ export default function Dashboard() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Deployments</p>
-                <p className="text-2xl font-bold">12</p>
+                <p className="text-2xl font-bold">Unlimited</p>
+                <p className="text-xs text-green-500 mt-1">100% Free</p>
               </div>
               <Zap className="w-8 h-8 text-green-500 opacity-50" />
             </div>
@@ -264,8 +266,9 @@ export default function Dashboard() {
           <Card className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">Views</p>
-                <p className="text-2xl font-bold">3.2K</p>
+                <p className="text-sm text-muted-foreground">AI Models</p>
+                <p className="text-2xl font-bold">All Access</p>
+                <p className="text-xs text-green-500 mt-1">No Charges</p>
               </div>
               <Users className="w-8 h-8 text-blue-500 opacity-50" />
             </div>
@@ -273,8 +276,9 @@ export default function Dashboard() {
           <Card className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">Growth</p>
-                <p className="text-2xl font-bold">+24%</p>
+                <p className="text-sm text-muted-foreground">Plan</p>
+                <p className="text-2xl font-bold">Free Forever</p>
+                <p className="text-xs text-green-500 mt-1">$0/month</p>
               </div>
               <TrendingUp className="w-8 h-8 text-orange-500 opacity-50" />
             </div>

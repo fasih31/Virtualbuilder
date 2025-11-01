@@ -101,7 +101,7 @@ export class MemStorage implements IStorage {
       firstName: userData.firstName || null,
       lastName: userData.lastName || null,
       profileImageUrl: userData.profileImageUrl || null,
-      subscriptionTier: existing?.subscriptionTier || "free",
+      subscriptionTier: existing?.subscriptionTier || "free_forever",
       stripeCustomerId: existing?.stripeCustomerId || null,
       createdAt: existing?.createdAt || now,
       updatedAt: now,

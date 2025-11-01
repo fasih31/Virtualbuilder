@@ -141,7 +141,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // AI Chat API with multiple providers
+  // AI Chat API with multiple providers (accessible to guests)
   app.post("/api/ai/chat", async (req, res) => {
     try {
       const { messages, provider = "openai", model } = req.body;
@@ -233,7 +233,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Code Generation API
+  // Code Generation API (accessible to guests)
   app.post("/api/generate/code", async (req, res) => {
     try {
       const { prompt, language = "javascript", provider = "openai" } = req.body;
