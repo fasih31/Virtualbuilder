@@ -5,7 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Suspense, lazy } from "react";
 import { Loader2 } from "lucide-react";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { VirtuCopilot } from "@/components/VirtuCopilot";
+import VirtuCopilot from "@/components/VirtuCopilot";
 
 // Lazy load pages for better performance
 const Home = lazy(() => import("./pages/home"));
