@@ -284,8 +284,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // AI Chat API with multiple providers (accessible to guests)
-  app.post("/api/ai/chat", async (req, res) => {
+  // AI Chat API - uses user's API keys
+  app.post("/api/ai/chat", async (req: any, res) => {
     try {
       const { messages, provider = "openai", model } = req.body;
 
@@ -293,67 +293,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Messages array is required" });
       }
 
-      let response;
-
-      switch (provider) {
-        case "openai": {
-          const client = getOpenAI();
-          if (!client) {
-            return res.status(503).json({ 
-              error: "OpenAI API key not configured. Please set OPENAI_API_KEY environment variable." 
-            });
-          }
-          const openaiResponse = await client.chat.completions.create({
-            model: model || "gpt-4o-mini",
-            messages: messages,
-            stream: false,
-          });
-          response = openaiResponse.choices[0].message.content;
-          break;
+      // Get user's API key for this provider
+      let apiKey = '';
+      if (req.user) {
+        const userId = req.user.claims.sub;
+        const keys = await storage.getUserApiKeys(userId);
+        const userKey = keys.find((k: any) => k.provider === provider && k.isActive);
+        
+        if (userKey) {
+          apiKey = decryptApiKey(userKey.encryptedKey);
         }
-
-        case "anthropic": {
-          const client = getAnthropic();
-          if (!client) {
-            return res.status(503).json({ 
-              error: "Anthropic API key not configured. Please set ANTHROPIC_API_KEY environment variable." 
-            });
-          }
-          const anthropicResponse = await client.messages.create({
-            model: model || "claude-3-5-sonnet-20241022",
-            max_tokens: 4096,
-            messages: messages.filter((m: any) => m.role !== "system"),
-            system: messages.find((m: any) => m.role === "system")?.content || undefined,
-          });
-          response = anthropicResponse.content[0].type === "text" 
-            ? anthropicResponse.content[0].text 
-            : "";
-          break;
-        }
-
-        case "gemini": {
-          const client = getGemini();
-          if (!client) {
-            return res.status(503).json({ 
-              error: "Gemini API key not configured. Please set GEMINI_API_KEY environment variable." 
-            });
-          }
-          const geminiModel = client.getGenerativeModel({ model: model || "gemini-1.5-flash" });
-          const chat = geminiModel.startChat({
-            history: messages.slice(0, -1).map((m: any) => ({
-              role: m.role === "assistant" ? "model" : "user",
-              parts: [{ text: m.content }],
-            })),
-          });
-          const lastMessage = messages[messages.length - 1];
-          const geminiResponse = await chat.sendMessage(lastMessage.content);
-          response = geminiResponse.response.text();
-          break;
-        }
-
-        default:
-          return res.status(400).json({ error: "Invalid AI provider" });
       }
+
+      // Fallback to system keys if user doesn't have one
+      if (!apiKey) {
+        if (provider === "openai" && process.env.OPENAI_API_KEY) {
+          apiKey = process.env.OPENAI_API_KEY;
+        } else if (provider === "gemini" && process.env.GEMINI_API_KEY) {
+          apiKey = process.env.GEMINI_API_KEY;
+        } else if (provider === "anthropic" && process.env.ANTHROPIC_API_KEY) {
+          apiKey = process.env.ANTHROPIC_API_KEY;
+        } else {
+          return res.status(400).json({ 
+            error: `No API key found for ${provider}. Please add your API key in Settings.` 
+          });
+        }
+      }
+
+      const prompt = messages.map((m: any) => m.content).join('\n');
+      const response = await aiProvider.generateWithAI({
+        provider,
+        model: model || (provider === 'openai' ? 'gpt-4o-mini' : provider === 'gemini' ? 'gemini-1.5-flash' : 'claude-3-5-sonnet-20241022'),
+        prompt,
+        apiKey
+      });
 
       res.json({ response, provider });
     } catch (error: any) {
@@ -418,60 +391,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Code Generation API (accessible to guests)
-  app.post("/api/generate/code", async (req, res) => {
+  // Code Generation API
+  app.post("/api/generate/code", async (req: any, res) => {
     try {
-      const { prompt, language = "javascript", provider = "openai" } = req.body;
+      const { prompt, language = "javascript", provider = "openai", model } = req.body;
 
-      const systemPrompt = `You are an expert code generator. Generate clean, well-documented ${language} code based on the user's requirements. Only return the code, no explanations.`;
-      const messages = [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: prompt }
-      ];
-
-      let code;
-
-      switch (provider) {
-        case "openai": {
-          const client = getOpenAI();
-          if (!client) {
-            return res.status(503).json({ 
-              error: "OpenAI API key not configured. Please set OPENAI_API_KEY environment variable." 
-            });
-          }
-          const openaiResponse = await client.chat.completions.create({
-            model: "gpt-4o-mini",
-            messages: messages,
-          });
-          code = openaiResponse.choices[0].message.content;
-          break;
-        }
-
-        case "anthropic": {
-          const client = getAnthropic();
-          if (!client) {
-            return res.status(503).json({ 
-              error: "Anthropic API key not configured. Please set ANTHROPIC_API_KEY environment variable." 
-            });
-          }
-          const anthropicResponse = await client.messages.create({
-            model: "claude-3-5-sonnet-20241022",
-            max_tokens: 4096,
-            messages: [{ role: "user", content: prompt }],
-            system: systemPrompt,
-          });
-          code = anthropicResponse.content[0].type === "text" 
-            ? anthropicResponse.content[0].text 
-            : "";
-          break;
-        }
-
-        default:
-          return res.status(400).json({ error: "Invalid provider" });
+      if (!prompt) {
+        return res.status(400).json({ error: "Prompt is required" });
       }
 
-      res.json({ code, provider });
+      // Get user's API key
+      let apiKey = '';
+      if (req.user) {
+        const userId = req.user.claims.sub;
+        const keys = await storage.getUserApiKeys(userId);
+        const userKey = keys.find((k: any) => k.provider === provider && k.isActive);
+        
+        if (userKey) {
+          apiKey = decryptApiKey(userKey.encryptedKey);
+        }
+      }
+
+      // Fallback to system keys
+      if (!apiKey) {
+        if (provider === "openai" && process.env.OPENAI_API_KEY) {
+          apiKey = process.env.OPENAI_API_KEY;
+        } else if (provider === "gemini" && process.env.GEMINI_API_KEY) {
+          apiKey = process.env.GEMINI_API_KEY;
+        } else if (provider === "anthropic" && process.env.ANTHROPIC_API_KEY) {
+          apiKey = process.env.ANTHROPIC_API_KEY;
+        } else {
+          return res.status(400).json({ 
+            error: `No API key found for ${provider}. Please add your API key in the API Keys section.` 
+          });
+        }
+      }
+
+      const fullPrompt = `You are an expert ${language} code generator. Generate clean, well-documented, production-ready code based on the user's requirements. Return ONLY the code, no explanations or markdown.\n\nUser request: ${prompt}`;
+
+      const code = await aiProvider.generateWithAI({
+        provider,
+        model: model || (provider === 'openai' ? 'gpt-4o-mini' : provider === 'gemini' ? 'gemini-1.5-flash' : 'claude-3-5-sonnet-20241022'),
+        prompt: fullPrompt,
+        apiKey,
+        maxTokens: 4000
+      });
+
+      res.json({ code, provider, language });
     } catch (error: any) {
+      console.error("Code generation error:", error);
       res.status(500).json({ error: error.message });
     }
   });
