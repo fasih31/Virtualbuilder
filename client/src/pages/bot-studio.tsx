@@ -9,14 +9,14 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Bot, MessageSquare, Zap, Play, Download } from "lucide-react";
+import { Bot, MessageSquare, Play, Download, Loader2, Plus, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 const platforms = [
-  { value: "discord", label: "Discord", icon: "💬" },
-  { value: "telegram", label: "Telegram", icon: "✈️" },
-  { value: "slack", label: "Slack", icon: "📱" },
-  { value: "whatsapp", label: "WhatsApp", icon: "📞" },
+  { value: "discord", label: "Discord", icon: "💬", language: "javascript" },
+  { value: "telegram", label: "Telegram", icon: "✈️", language: "python" },
+  { value: "slack", label: "Slack", icon: "📱", language: "javascript" },
+  { value: "whatsapp", label: "WhatsApp", icon: "📞", language: "python" },
 ];
 
 const botTemplates = [
@@ -34,49 +34,102 @@ export default function BotStudio() {
   const [template, setTemplate] = useState("");
   const [botToken, setBotToken] = useState("");
   const [commands, setCommands] = useState([{ trigger: "!help", response: "Available commands..." }]);
-
   const [botCode, setBotCode] = useState("");
 
+  const selectedPlatform = platforms.find(p => p.value === platform);
+
   const createBot = useMutation({
-    mutationFn: async (data: any) => {
-      const prompt = `Create a fully functional ${platform} bot with:
-- Template: ${template}
-- Commands: ${JSON.stringify(commands)}
-- Proper error handling
-- Platform API integration
-- Event listeners
-- Ready-to-deploy code
-Language: ${platform === "discord" ? "JavaScript (discord.js)" : "Python"}`;
+    mutationFn: async () => {
+      const commandsList = commands.map(c => `- ${c.trigger}: ${c.response}`).join('\n');
+      const prompt = `Create a fully functional ${platform} bot with the following specifications:
+
+Platform: ${platform}
+Template Type: ${template || 'basic'}
+Bot Name: ${projectName}
+
+Commands to implement:
+${commandsList}
+
+Requirements:
+- Use ${selectedPlatform?.language === 'javascript' ? 'discord.js library' : 'python-telegram-bot library'}
+- Include proper error handling
+- Add event listeners for messages
+- Implement all the specified commands
+- Include setup instructions in comments
+- Make it production-ready
+- Add bot token placeholder: BOT_TOKEN_HERE
+
+Generate complete, working code that can be deployed immediately.`;
       
       const response = await fetch("/api/generate/code", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           prompt: prompt,
-          language: platform === "discord" ? "javascript" : "python",
-          provider: "gemini"
+          language: selectedPlatform?.language || "javascript",
+          provider: "openai"
         }),
       });
-      if (!response.ok) throw new Error("Failed to create bot");
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to create bot");
+      }
+      
       return response.json();
     },
     onSuccess: (data) => {
-      if (data.code) {
-        setBotCode(data.code);
+      let code = data.code;
+      // Extract code from markdown if wrapped
+      if (code.includes("```")) {
+        const match = code.match(/```(?:javascript|python)?\n([\s\S]*?)```/);
+        if (match) {
+          code = match[1].trim();
+        }
       }
+      setBotCode(code);
       toast({ 
         title: "Bot Created!", 
         description: "Your bot code is ready! Download and deploy it." 
       });
     },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive"
+      });
+    }
   });
 
   const addCommand = () => {
     setCommands([...commands, { trigger: "", response: "" }]);
   };
 
+  const removeCommand = (index: number) => {
+    setCommands(commands.filter((_, i) => i !== index));
+  };
+
+  const updateCommand = (index: number, field: 'trigger' | 'response', value: string) => {
+    const newCmds = [...commands];
+    newCmds[index][field] = value;
+    setCommands(newCmds);
+  };
+
+  const downloadBot = () => {
+    const extension = selectedPlatform?.language === 'javascript' ? 'js' : 'py';
+    const blob = new Blob([botCode], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${projectName || 'bot'}.${extension}`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast({ title: "Downloaded!" });
+  };
+
   return (
-    <div className="min-h-screen p-6">
+    <div className="min-h-screen p-6 bg-background">
       <div className="max-w-7xl mx-auto">
         <div className="flex items-center gap-3 mb-8">
           <Bot className="w-8 h-8 text-primary" />
@@ -89,7 +142,7 @@ Language: ${platform === "discord" ? "JavaScript (discord.js)" : "Python"}`;
               <TabsList className="grid w-full grid-cols-3">
                 <TabsTrigger value="setup">Setup</TabsTrigger>
                 <TabsTrigger value="commands">Commands</TabsTrigger>
-                <TabsTrigger value="deploy">Deploy</TabsTrigger>
+                <TabsTrigger value="deploy">Code</TabsTrigger>
               </TabsList>
 
               <TabsContent value="setup" className="space-y-6 mt-6">
@@ -116,6 +169,9 @@ Language: ${platform === "discord" ? "JavaScript (discord.js)" : "Python"}`;
                       ))}
                     </SelectContent>
                   </Select>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Language: {selectedPlatform?.language}
+                  </p>
                 </div>
 
                 <div>
@@ -135,26 +191,14 @@ Language: ${platform === "discord" ? "JavaScript (discord.js)" : "Python"}`;
                     ))}
                   </div>
                 </div>
-
-                <div>
-                  <Label>Bot Token</Label>
-                  <Input
-                    type="password"
-                    placeholder="Your bot token"
-                    value={botToken}
-                    onChange={(e) => setBotToken(e.target.value)}
-                  />
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Get your token from {platform === "discord" ? "Discord Developer Portal" : "Bot API"}
-                  </p>
-                </div>
               </TabsContent>
 
               <TabsContent value="commands" className="space-y-4 mt-6">
                 <div className="flex justify-between items-center">
                   <Label>Bot Commands</Label>
                   <Button size="sm" onClick={addCommand}>
-                    + Add Command
+                    <Plus className="w-4 h-4 mr-1" />
+                    Add Command
                   </Button>
                 </div>
                 {commands.map((cmd, idx) => (
@@ -165,24 +209,26 @@ Language: ${platform === "discord" ? "JavaScript (discord.js)" : "Python"}`;
                         <Input
                           placeholder="!help"
                           value={cmd.trigger}
-                          onChange={(e) => {
-                            const newCmds = [...commands];
-                            newCmds[idx].trigger = e.target.value;
-                            setCommands(newCmds);
-                          }}
+                          onChange={(e) => updateCommand(idx, 'trigger', e.target.value)}
                         />
                       </div>
                       <div>
                         <Label className="text-xs">Response</Label>
-                        <Input
-                          placeholder="Bot response..."
-                          value={cmd.response}
-                          onChange={(e) => {
-                            const newCmds = [...commands];
-                            newCmds[idx].response = e.target.value;
-                            setCommands(newCmds);
-                          }}
-                        />
+                        <div className="flex gap-2">
+                          <Input
+                            placeholder="Bot response..."
+                            value={cmd.response}
+                            onChange={(e) => updateCommand(idx, 'response', e.target.value)}
+                          />
+                          <Button
+                            size="icon"
+                            variant="outline"
+                            onClick={() => removeCommand(idx)}
+                            disabled={commands.length === 1}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
                       </div>
                     </div>
                   </Card>
@@ -193,44 +239,36 @@ Language: ${platform === "discord" ? "JavaScript (discord.js)" : "Python"}`;
                 <Button
                   className="w-full"
                   size="lg"
-                  onClick={() =>
-                    createBot.mutate({
-                      name: projectName,
-                      platform,
-                      template,
-                      token: botToken,
-                      commands,
-                    })
-                  }
-                  disabled={!projectName || !botToken || createBot.isPending}
+                  onClick={() => createBot.mutate()}
+                  disabled={!projectName || createBot.isPending}
                 >
-                  <Play className="w-4 h-4 mr-2" />
-                  {createBot.isPending ? "Generating..." : "Generate Bot Code"}
+                  {createBot.isPending ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Generating...
+                    </>
+                  ) : (
+                    <>
+                      <Play className="w-4 h-4 mr-2" />
+                      Generate Bot Code
+                    </>
+                  )}
                 </Button>
                 
                 {botCode && (
                   <>
                     <Card className="p-4">
-                      <h4 className="font-semibold mb-2">Generated Bot Code</h4>
+                      <div className="flex items-center justify-between mb-2">
+                        <h4 className="font-semibold">Generated Bot Code</h4>
+                        <Button size="sm" variant="outline" onClick={downloadBot}>
+                          <Download className="w-4 h-4 mr-1" />
+                          Download
+                        </Button>
+                      </div>
                       <pre className="bg-slate-950 p-4 rounded text-green-400 text-sm overflow-x-auto max-h-96">
                         <code>{botCode}</code>
                       </pre>
                     </Card>
-                    <Button 
-                      variant="outline" 
-                      className="w-full"
-                      onClick={() => {
-                        const blob = new Blob([botCode], { type: 'text/plain' });
-                        const url = URL.createObjectURL(blob);
-                        const a = document.createElement('a');
-                        a.href = url;
-                        a.download = `${projectName}-bot.${platform === 'discord' ? 'js' : 'py'}`;
-                        a.click();
-                      }}
-                    >
-                      <Download className="w-4 h-4 mr-2" />
-                      Download Bot Code
-                    </Button>
                   </>
                 )}
               </TabsContent>
@@ -244,12 +282,18 @@ Language: ${platform === "discord" ? "JavaScript (discord.js)" : "Python"}`;
             </h3>
             <div className="space-y-3">
               <div className="flex justify-between items-center">
-                <span className="text-sm">Status</span>
-                <Badge variant="secondary">Not Deployed</Badge>
+                <span className="text-sm">Platform</span>
+                <Badge variant="secondary">{selectedPlatform?.label}</Badge>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-sm">Commands</span>
                 <span className="text-sm font-semibold">{commands.length}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm">Status</span>
+                <Badge variant={botCode ? "default" : "secondary"}>
+                  {botCode ? "Ready" : "Not Generated"}
+                </Badge>
               </div>
             </div>
           </Card>

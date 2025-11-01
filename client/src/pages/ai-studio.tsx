@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
@@ -6,7 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Send, Copy, Loader2, Sparkles } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Send, Copy, Loader2, Sparkles, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
 
@@ -14,7 +16,15 @@ export default function AIStudio() {
   const { toast } = useToast();
   const [prompt, setPrompt] = useState("");
   const [systemPrompt, setSystemPrompt] = useState("You are a helpful AI assistant.");
+  const [provider, setProvider] = useState("openai");
+  const [model, setModel] = useState("gpt-4o-mini");
   const [messages, setMessages] = useState<Array<{ role: string; content: string }>>([]);
+
+  const models = {
+    openai: ["gpt-4o-mini", "gpt-4o", "gpt-3.5-turbo"],
+    anthropic: ["claude-3-5-sonnet-20241022", "claude-3-haiku-20240307"],
+    gemini: ["gemini-1.5-flash", "gemini-1.5-pro"]
+  };
 
   const chatMutation = useMutation({
     mutationFn: async (userMessage: string) => {
@@ -27,7 +37,8 @@ export default function AIStudio() {
             ...messages,
             { role: "user", content: userMessage }
           ],
-          provider: "openai"
+          provider: provider,
+          model: model
         }),
       });
 
@@ -65,33 +76,81 @@ export default function AIStudio() {
     toast({ title: "Copied to clipboard!" });
   };
 
+  const clearChat = () => {
+    setMessages([]);
+    toast({ title: "Chat cleared" });
+  };
+
   return (
-    <div className="min-h-screen p-6">
-      <div className="max-w-4xl mx-auto">
+    <div className="min-h-screen p-6 bg-background">
+      <div className="max-w-5xl mx-auto">
         <div className="mb-8">
           <h1 className="text-3xl font-bold gradient-text mb-2">AI Studio</h1>
-          <p className="text-muted-foreground">Build and test AI applications</p>
+          <p className="text-muted-foreground">Build and test AI applications with multiple providers</p>
         </div>
 
         <div className="grid gap-6">
-          {/* System Prompt */}
+          {/* Settings Panel */}
           <Card className="p-6">
-            <Label className="mb-2 block">System Instructions</Label>
-            <Textarea
-              placeholder="You are a helpful AI assistant..."
-              value={systemPrompt}
-              onChange={(e) => setSystemPrompt(e.target.value)}
-              rows={3}
-            />
+            <div className="grid md:grid-cols-3 gap-4 mb-4">
+              <div>
+                <Label className="mb-2 block">AI Provider</Label>
+                <Select value={provider} onValueChange={(value) => {
+                  setProvider(value);
+                  setModel(models[value as keyof typeof models][0]);
+                }}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="openai">OpenAI</SelectItem>
+                    <SelectItem value="anthropic">Anthropic</SelectItem>
+                    <SelectItem value="gemini">Google Gemini</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label className="mb-2 block">Model</Label>
+                <Select value={model} onValueChange={setModel}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {models[provider as keyof typeof models].map((m) => (
+                      <SelectItem key={m} value={m}>{m}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="flex items-end">
+                <Button onClick={clearChat} variant="outline" className="w-full">
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Clear Chat
+                </Button>
+              </div>
+            </div>
+
+            <div>
+              <Label className="mb-2 block">System Instructions</Label>
+              <Textarea
+                placeholder="You are a helpful AI assistant..."
+                value={systemPrompt}
+                onChange={(e) => setSystemPrompt(e.target.value)}
+                rows={3}
+              />
+            </div>
           </Card>
 
           {/* Chat Interface */}
           <Card className="p-6">
-            <div className="space-y-4 mb-4 max-h-96 overflow-y-auto">
+            <div className="space-y-4 mb-4 max-h-[500px] overflow-y-auto">
               {messages.length === 0 ? (
                 <div className="text-center py-12 text-muted-foreground">
                   <Sparkles className="w-12 h-12 mx-auto mb-4 opacity-50" />
                   <p>Start a conversation with AI</p>
+                  <p className="text-sm mt-2">Using {provider} - {model}</p>
                 </div>
               ) : (
                 messages.map((msg, idx) => (
@@ -138,10 +197,10 @@ export default function AIStudio() {
                 placeholder="Ask AI anything..."
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && !chatMutation.isPending && handleSend()}
+                onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && !chatMutation.isPending && handleSend()}
               />
               <Button onClick={handleSend} disabled={chatMutation.isPending || !prompt.trim()}>
-                <Send className="w-4 h-4" />
+                {chatMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
               </Button>
             </div>
           </Card>

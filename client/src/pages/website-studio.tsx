@@ -1,16 +1,21 @@
+
 import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Sparkles, Copy, Download } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Sparkles, Copy, Download, Eye, Code, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default function WebsiteStudio() {
   const { toast } = useToast();
   const [prompt, setPrompt] = useState("");
   const [generatedCode, setGeneratedCode] = useState("");
+  const [provider, setProvider] = useState("openai");
+  const [showPreview, setShowPreview] = useState(true);
 
   const generateMutation = useMutation({
     mutationFn: async (userPrompt: string) => {
@@ -18,9 +23,11 @@ export default function WebsiteStudio() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          prompt: `Create a complete, working HTML page with embedded CSS and JavaScript for: ${userPrompt}. Make it modern and responsive.`,
+          prompt: `Create a complete, working HTML page with embedded CSS and JavaScript for: ${userPrompt}. 
+Make it modern, responsive, and beautiful. Include all necessary HTML structure, CSS styling in a <style> tag, 
+and JavaScript in a <script> tag. Make sure it's a complete, working page.`,
           language: "html",
-          provider: "openai"
+          provider: provider
         }),
       });
 
@@ -32,7 +39,14 @@ export default function WebsiteStudio() {
       return response.json();
     },
     onSuccess: (data) => {
-      setGeneratedCode(data.code);
+      // Extract code from markdown if needed
+      let code = data.code;
+      if (code.includes("```html")) {
+        code = code.split("```html")[1].split("```")[0].trim();
+      } else if (code.includes("```")) {
+        code = code.split("```")[1].split("```")[0].trim();
+      }
+      setGeneratedCode(code);
       toast({ title: "Website generated!", description: "Your code is ready" });
     },
     onError: (error: any) => {
@@ -45,7 +59,10 @@ export default function WebsiteStudio() {
   });
 
   const handleGenerate = () => {
-    if (!prompt.trim()) return;
+    if (!prompt.trim()) {
+      toast({ title: "Please enter a description", variant: "destructive" });
+      return;
+    }
     generateMutation.mutate(prompt);
   };
 
@@ -62,10 +79,11 @@ export default function WebsiteStudio() {
     a.download = 'website.html';
     a.click();
     URL.revokeObjectURL(url);
+    toast({ title: "Downloaded!" });
   };
 
   return (
-    <div className="min-h-screen p-6">
+    <div className="min-h-screen p-6 bg-background">
       <div className="max-w-7xl mx-auto">
         <div className="mb-8">
           <h1 className="text-3xl font-bold gradient-text mb-2">Website Builder</h1>
@@ -75,30 +93,57 @@ export default function WebsiteStudio() {
         <div className="grid lg:grid-cols-2 gap-6">
           {/* Generator */}
           <Card className="p-6">
+            <div className="mb-4">
+              <Label className="mb-2 block">AI Provider</Label>
+              <Select value={provider} onValueChange={setProvider}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="openai">OpenAI</SelectItem>
+                  <SelectItem value="anthropic">Anthropic</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
             <Label className="mb-2 block">Describe Your Website</Label>
             <Textarea
-              placeholder="Build a modern portfolio website with a hero section, projects gallery, and contact form..."
+              placeholder="Example: Build a modern portfolio website with a hero section, animated gradient background, projects gallery with cards, skills section with icons, and a contact form. Use a dark theme with accent colors."
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
-              rows={10}
+              rows={12}
               className="mb-4"
             />
             <Button
               onClick={handleGenerate}
               disabled={generateMutation.isPending || !prompt.trim()}
               className="w-full"
+              size="lg"
             >
-              <Sparkles className="w-4 h-4 mr-2" />
-              {generateMutation.isPending ? "Generating..." : "Generate Website"}
+              {generateMutation.isPending ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Generating...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-4 h-4 mr-2" />
+                  Generate Website
+                </>
+              )}
             </Button>
           </Card>
 
           {/* Preview & Code */}
           <Card className="p-6">
             <div className="flex items-center justify-between mb-4">
-              <Label>Generated Code</Label>
+              <Label>Output</Label>
               {generatedCode && (
                 <div className="flex gap-2">
+                  <Button size="sm" variant="outline" onClick={() => setShowPreview(!showPreview)}>
+                    {showPreview ? <Code className="w-4 h-4 mr-1" /> : <Eye className="w-4 h-4 mr-1" />}
+                    {showPreview ? "Code" : "Preview"}
+                  </Button>
                   <Button size="sm" variant="outline" onClick={copyCode}>
                     <Copy className="w-4 h-4 mr-1" />
                     Copy
@@ -112,26 +157,30 @@ export default function WebsiteStudio() {
             </div>
 
             {generatedCode ? (
-              <>
-                <div className="mb-4 border rounded-lg overflow-hidden h-64">
-                  <iframe
-                    srcDoc={generatedCode}
-                    className="w-full h-full"
-                    title="Preview"
-                    sandbox="allow-scripts"
+              <div className="space-y-4">
+                {showPreview ? (
+                  <div className="border rounded-lg overflow-hidden bg-white" style={{ height: '600px' }}>
+                    <iframe
+                      srcDoc={generatedCode}
+                      className="w-full h-full"
+                      title="Preview"
+                      sandbox="allow-scripts allow-same-origin"
+                    />
+                  </div>
+                ) : (
+                  <Textarea
+                    value={generatedCode}
+                    onChange={(e) => setGeneratedCode(e.target.value)}
+                    rows={28}
+                    className="font-mono text-xs"
                   />
-                </div>
-                <Textarea
-                  value={generatedCode}
-                  onChange={(e) => setGeneratedCode(e.target.value)}
-                  rows={15}
-                  className="font-mono text-xs"
-                />
-              </>
+                )}
+              </div>
             ) : (
-              <div className="text-center py-20 text-muted-foreground">
+              <div className="text-center py-20 text-muted-foreground border rounded-lg" style={{ height: '600px' }}>
                 <Sparkles className="w-12 h-12 mx-auto mb-4 opacity-50" />
                 <p>Generate a website to see the code and preview</p>
+                <p className="text-sm mt-2">Using {provider}</p>
               </div>
             )}
           </Card>
