@@ -148,17 +148,47 @@ export const ratings = pgTable("ratings", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
+// API Keys (encrypted storage for user AI provider keys)
+export const apiKeys = pgTable("api_keys", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  provider: text("provider").notNull(), // 'openai', 'anthropic', 'gemini', 'cohere'
+  encryptedKey: text("encrypted_key").notNull(), // AES-256 encrypted
+  name: text("name"), // User-friendly name for the key
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  lastUsed: timestamp("last_used"),
+});
+
+// Prompt Templates
+export const promptTemplates = pgTable("prompt_templates", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  description: text("description"),
+  category: text("category").notNull(), // 'code', 'chat', 'website', 'game', etc.
+  template: text("template").notNull(), // The actual prompt template with variables
+  variables: jsonb("variables").default([]), // Array of variable names
+  isPublic: boolean("is_public").notNull().default(false),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
 export const insertTeamSchema = createInsertSchema(teams).omit({ id: true, createdAt: true });
 export const insertCollaborationSchema = createInsertSchema(collaborations).omit({ id: true, invitedAt: true });
 export const insertAnalyticsEventSchema = createInsertSchema(analyticsEvents).omit({ id: true, timestamp: true });
 export const insertDeploymentSchema = createInsertSchema(deployments).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertRatingSchema = createInsertSchema(ratings).omit({ id: true, createdAt: true });
+export const insertApiKeySchema = createInsertSchema(apiKeys).omit({ id: true, createdAt: true, lastUsed: true });
+export const insertPromptTemplateSchema = createInsertSchema(promptTemplates).omit({ id: true, createdAt: true, updatedAt: true });
 
 export type Team = typeof teams.$inferSelect;
 export type Collaboration = typeof collaborations.$inferSelect;
 export type AnalyticsEvent = typeof analyticsEvents.$inferSelect;
 export type Deployment = typeof deployments.$inferSelect;
 export type Rating = typeof ratings.$inferSelect;
+export type ApiKey = typeof apiKeys.$inferSelect;
+export type PromptTemplate = typeof promptTemplates.$inferSelect;
 
 export type InsertProject = z.infer<typeof insertProjectSchema>;
 export type Project = typeof projects.$inferSelect;
@@ -166,3 +196,5 @@ export type InsertMarketplaceItem = z.infer<typeof insertMarketplaceItemSchema>;
 export type MarketplaceItem = typeof marketplaceItems.$inferSelect;
 export type InsertConversation = z.infer<typeof insertConversationSchema>;
 export type Conversation = typeof conversations.$inferSelect;
+export type InsertApiKey = z.infer<typeof insertApiKeySchema>;
+export type InsertPromptTemplate = z.infer<typeof insertPromptTemplateSchema>;

@@ -6,7 +6,11 @@ import {
   type MarketplaceItem,
   type InsertMarketplaceItem,
   type Conversation,
-  type InsertConversation
+  type InsertConversation,
+  type ApiKey,
+  type InsertApiKey,
+  type PromptTemplate,
+  type InsertPromptTemplate
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 
@@ -19,9 +23,11 @@ import {
   collaborations,
   analyticsEvents,
   deployments,
-  ratings
+  ratings,
+  apiKeys,
+  promptTemplates
 } from "@shared/schema";
-import { eq, sql } from "drizzle-orm";
+import { eq, sql, and } from "drizzle-orm";
 
 export interface IStorage {
   // Users (Replit Auth)
@@ -70,6 +76,22 @@ export interface IStorage {
   addRating(data: any): Promise<any | undefined>;
   getItemRatings(marketplaceItemId: string): Promise<any[]>;
   getUserRating(marketplaceItemId: string, userId: string): Promise<any | undefined>;
+
+  // API Keys Methods
+  getUserApiKeys(userId: string): Promise<ApiKey[]>;
+  getApiKey(id: string): Promise<ApiKey | undefined>;
+  getUserApiKeyByProvider(userId: string, provider: string): Promise<ApiKey | undefined>;
+  createApiKey(data: InsertApiKey): Promise<ApiKey>;
+  updateApiKeyLastUsed(id: string): Promise<void>;
+  deleteApiKey(id: string): Promise<boolean>;
+
+  // Prompt Templates Methods
+  getPromptTemplate(id: string): Promise<PromptTemplate | undefined>;
+  getUserPromptTemplates(userId: string): Promise<PromptTemplate[]>;
+  getPublicPromptTemplates(): Promise<PromptTemplate[]>;
+  createPromptTemplate(data: InsertPromptTemplate): Promise<PromptTemplate>;
+  updatePromptTemplate(id: string, updates: Partial<InsertPromptTemplate>): Promise<PromptTemplate | undefined>;
+  deletePromptTemplate(id: string): Promise<boolean>;
 }
 
 export class MemStorage implements IStorage {
@@ -335,6 +357,102 @@ export class MemStorage implements IStorage {
         sql`${ratings.marketplaceItemId} = ${marketplaceItemId} AND ${ratings.userId} = ${userId}`
       );
     return rating;
+  }
+
+  // API Keys Methods
+  async getUserApiKeys(userId: string): Promise<ApiKey[]> {
+    return this.db
+      .select()
+      .from(apiKeys)
+      .where(eq(apiKeys.userId, userId))
+      .orderBy(apiKeys.createdAt);
+  }
+
+  async getApiKey(id: string): Promise<ApiKey | undefined> {
+    const [key] = await this.db
+      .select()
+      .from(apiKeys)
+      .where(eq(apiKeys.id, id));
+    return key;
+  }
+
+  async getUserApiKeyByProvider(userId: string, provider: string): Promise<ApiKey | undefined> {
+    const [key] = await this.db
+      .select()
+      .from(apiKeys)
+      .where(and(
+        eq(apiKeys.userId, userId),
+        eq(apiKeys.provider, provider),
+        eq(apiKeys.isActive, true)
+      ));
+    return key;
+  }
+
+  async createApiKey(data: InsertApiKey): Promise<ApiKey> {
+    const [key] = await this.db
+      .insert(apiKeys)
+      .values(data)
+      .returning();
+    return key;
+  }
+
+  async updateApiKeyLastUsed(id: string): Promise<void> {
+    await this.db
+      .update(apiKeys)
+      .set({ lastUsed: new Date() })
+      .where(eq(apiKeys.id, id));
+  }
+
+  async deleteApiKey(id: string): Promise<boolean> {
+    await this.db.delete(apiKeys).where(eq(apiKeys.id, id));
+    return true;
+  }
+
+  // Prompt Templates Methods
+  async getPromptTemplate(id: string): Promise<PromptTemplate | undefined> {
+    const [template] = await this.db
+      .select()
+      .from(promptTemplates)
+      .where(eq(promptTemplates.id, id));
+    return template;
+  }
+
+  async getUserPromptTemplates(userId: string): Promise<PromptTemplate[]> {
+    return this.db
+      .select()
+      .from(promptTemplates)
+      .where(eq(promptTemplates.userId, userId))
+      .orderBy(promptTemplates.createdAt);
+  }
+
+  async getPublicPromptTemplates(): Promise<PromptTemplate[]> {
+    return this.db
+      .select()
+      .from(promptTemplates)
+      .where(eq(promptTemplates.isPublic, true))
+      .orderBy(promptTemplates.createdAt);
+  }
+
+  async createPromptTemplate(data: InsertPromptTemplate): Promise<PromptTemplate> {
+    const [template] = await this.db
+      .insert(promptTemplates)
+      .values(data)
+      .returning();
+    return template;
+  }
+
+  async updatePromptTemplate(id: string, updates: Partial<InsertPromptTemplate>): Promise<PromptTemplate | undefined> {
+    const [template] = await this.db
+      .update(promptTemplates)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(promptTemplates.id, id))
+      .returning();
+    return template;
+  }
+
+  async deletePromptTemplate(id: string): Promise<boolean> {
+    await this.db.delete(promptTemplates).where(eq(promptTemplates.id, id));
+    return true;
   }
 }
 

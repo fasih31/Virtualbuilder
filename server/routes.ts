@@ -1,13 +1,14 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertProjectSchema, insertMarketplaceItemSchema, insertConversationSchema } from "@shared/schema";
+import { insertProjectSchema, insertMarketplaceItemSchema, insertConversationSchema, insertApiKeySchema, insertPromptTemplateSchema } from "@shared/schema";
 import { setupAuth, isAuthenticated } from "./replitAuth";
 import OpenAI from "openai";
 import Anthropic from "@anthropic-ai/sdk";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { deploymentService } from "./deploymentService";
 import JSZip from "jszip";
+import { aiProvider, encryptApiKey, decryptApiKey } from "./aiProvider";
 
 // Lazy-load AI clients only when API keys are available
 let openai: OpenAI | null = null;
@@ -49,6 +50,114 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error("Error fetching user:", error);
       res.status(500).json({ message: "Failed to fetch user" });
+    }
+  });
+
+  // API Keys Management
+  app.get("/api/keys", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const keys = await storage.getUserApiKeys(userId);
+      // Never return decrypted keys to frontend
+      const safeKeys = keys.map(k => ({
+        id: k.id,
+        provider: k.provider,
+        name: k.name,
+        isActive: k.isActive,
+        createdAt: k.createdAt,
+        lastUsed: k.lastUsed,
+      }));
+      res.json(safeKeys);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/keys", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { provider, apiKey, name } = req.body;
+
+      if (!provider || !apiKey) {
+        return res.status(400).json({ error: "Provider and API key are required" });
+      }
+
+      // Encrypt the API key before storing
+      const encryptedKey = encryptApiKey(apiKey);
+
+      const validatedData = insertApiKeySchema.parse({
+        userId,
+        provider,
+        encryptedKey,
+        name: name || `${provider} Key`,
+        isActive: true,
+      });
+
+      const key = await storage.createApiKey(validatedData);
+
+      // Don't return the encrypted key
+      res.json({
+        id: key.id,
+        provider: key.provider,
+        name: key.name,
+        isActive: key.isActive,
+        createdAt: key.createdAt,
+      });
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  app.delete("/api/keys/:id", isAuthenticated, async (req, res) => {
+    try {
+      const success = await storage.deleteApiKey(req.params.id);
+      res.json({ success });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Prompt Templates
+  app.get("/api/prompts", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const userTemplates = await storage.getUserPromptTemplates(userId);
+      const publicTemplates = await storage.getPublicPromptTemplates();
+      res.json({ user: userTemplates, public: publicTemplates });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/prompts", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const validatedData = insertPromptTemplateSchema.parse({ ...req.body, userId });
+      const template = await storage.createPromptTemplate(validatedData);
+      res.json(template);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  app.patch("/api/prompts/:id", isAuthenticated, async (req, res) => {
+    try {
+      const template = await storage.updatePromptTemplate(req.params.id, req.body);
+      if (!template) {
+        return res.status(404).json({ error: "Template not found" });
+      }
+      res.json(template);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.delete("/api/prompts/:id", isAuthenticated, async (req, res) => {
+    try {
+      const success = await storage.deletePromptTemplate(req.params.id);
+      res.json({ success });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
     }
   });
 
