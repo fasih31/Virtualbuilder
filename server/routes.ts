@@ -6,6 +6,8 @@ import { setupAuth, isAuthenticated } from "./replitAuth";
 import OpenAI from "openai";
 import Anthropic from "@anthropic-ai/sdk";
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { deploymentService } from "./deploymentService";
+import JSZip from "jszip";
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
@@ -452,6 +454,105 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       res.json({ code, provider });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Multi-provider deployment
+  app.post("/api/deploy/prepare", async (req, res) => {
+    try {
+      const { projectId, provider, code } = req.body;
+      const userId = (req as any).user?.claims?.sub || 'guest';
+
+      const deployment = await deploymentService.createDeploymentPackage({
+        projectId,
+        userId,
+        provider,
+        code
+      });
+
+      res.json({ files: deployment, provider });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/deploy/download", async (req, res) => {
+    try {
+      const { files, projectName = 'virtubuild-project' } = req.body;
+      
+      const zip = new JSZip();
+      
+      for (const [filename, content] of Object.entries(files)) {
+        zip.file(filename, content as string);
+      }
+
+      const buffer = await zip.generateAsync({ type: 'nodebuffer' });
+      
+      res.setHeader('Content-Type', 'application/zip');
+      res.setHeader('Content-Disposition', `attachment; filename="${projectName}.zip"`);
+      res.send(buffer);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // SEO Tools
+  app.post("/api/seo/robots", async (req, res) => {
+    try {
+      const { domain, disallow = [] } = req.body;
+      
+      let robotsTxt = `User-agent: *\n`;
+      
+      if (disallow.length > 0) {
+        disallow.forEach((path: string) => {
+          robotsTxt += `Disallow: ${path}\n`;
+        });
+      } else {
+        robotsTxt += `Allow: /\n`;
+      }
+      
+      if (domain) {
+        robotsTxt += `\nSitemap: https://${domain}/sitemap.xml`;
+      }
+
+      res.json({ content: robotsTxt });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/seo/sitemap", async (req, res) => {
+    try {
+      const { domain, pages = ['/'] } = req.body;
+      const today = new Date().toISOString().split('T')[0];
+      
+      let sitemap = `<?xml version="1.0" encoding="UTF-8"?>\n`;
+      sitemap += `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n`;
+      
+      pages.forEach((page: string) => {
+        sitemap += `  <url>\n`;
+        sitemap += `    <loc>https://${domain}${page}</loc>\n`;
+        sitemap += `    <lastmod>${today}</lastmod>\n`;
+        sitemap += `    <changefreq>weekly</changefreq>\n`;
+        sitemap += `    <priority>0.8</priority>\n`;
+        sitemap += `  </url>\n`;
+      });
+      
+      sitemap += `</urlset>`;
+
+      res.json({ content: sitemap });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // SSL Certificate instructions
+  app.get("/api/ssl/info", async (req, res) => {
+    try {
+      const sslInfo = deploymentService.generateSSLInstructions();
+      res.json(sslInfo);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }

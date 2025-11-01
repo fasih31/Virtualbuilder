@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { motion, AnimatePresence } from "framer-motion";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
+import { debounce } from "lodash";
 
 const llmProviders = [
   { value: "openai", label: "OpenAI GPT-4", icon: "🤖" },
@@ -105,7 +106,7 @@ export default function AIStudio() {
         ...conversationHistory,
         { role: "user", content: prompt }
       ];
-      
+
       const response = await fetch("/api/ai/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -132,6 +133,16 @@ export default function AIStudio() {
       setTestPrompt("");
     },
   });
+
+  const debouncedTestAI = useMemo(
+    () => debounce((prompt: string) => testAI.mutate(prompt), 300),
+    [testAI.mutate]
+  );
+
+  const handleTestPromptChange = (prompt: string) => {
+    setTestPrompt(prompt);
+    debouncedTestAI(prompt);
+  };
 
   return (
     <div className="min-h-screen">
@@ -213,7 +224,7 @@ export default function AIStudio() {
                     <Label>Advanced Settings</Label>
                     <Settings className="w-4 h-4 text-muted-foreground" />
                   </div>
-                  
+
                   <div className="space-y-3">
                     <div>
                       <div className="flex justify-between mb-2">
@@ -222,14 +233,14 @@ export default function AIStudio() {
                       </div>
                       <Slider value={temperature} onValueChange={setTemperature} min={0} max={1} step={0.1} />
                     </div>
-                    
+
                     <div>
                       <div className="flex justify-between mb-2">
                         <Label className="text-sm">Max Tokens: {maxTokens[0]}</Label>
                       </div>
                       <Slider value={maxTokens} onValueChange={setMaxTokens} min={256} max={4096} step={256} />
                     </div>
-                    
+
                     <div className="flex items-center justify-between">
                       <Label className="text-sm">Streaming Response</Label>
                       <Switch checked={streaming} onCheckedChange={setStreaming} />
@@ -243,7 +254,7 @@ export default function AIStudio() {
                     <Input
                       placeholder="Enter a test prompt or use voice..."
                       value={testPrompt}
-                      onChange={(e) => setTestPrompt(e.target.value)}
+                      onChange={(e) => handleTestPromptChange(e.target.value)}
                       onKeyPress={(e) => e.key === 'Enter' && !testAI.isPending && testAI.mutate(testPrompt)}
                     />
                     <Button
@@ -291,7 +302,7 @@ export default function AIStudio() {
                       </motion.div>
                     ))}
                   </AnimatePresence>
-                  
+
                   {testAI.isPending && (
                     <motion.div
                       initial={{ opacity: 0 }}

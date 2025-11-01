@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -13,6 +13,7 @@ import { Globe, Palette, Code, Smartphone, Monitor, Download, ExternalLink, Eye,
 import { useToast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
+import { EnhancedDeployment } from "@/components/EnhancedDeployment";
 
 const frameworks = [
   { value: "react", label: "React + Vite" },
@@ -50,20 +51,19 @@ export default function WebsiteStudio() {
   const [activeEditor, setActiveEditor] = useState<"html" | "css" | "js">("html");
   const [previewContent, setPreviewContent] = useState("");
 
-  useEffect(() => {
-    const fullCode = `
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <style>${cssCode}</style>
-        </head>
-        <body>
-          ${htmlCode}
-          <script>${jsCode}<\/script>
-        </body>
-      </html>
-    `;
-    setPreviewContent(fullCode);
+  const previewContent = useMemo(() => {
+    return `<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>${cssCode}</style>
+  </head>
+  <body>
+    ${htmlCode}
+    <script>${jsCode}<\/script>
+  </body>
+</html>`;
   }, [htmlCode, cssCode, jsCode]);
 
   const generateSite = useMutation({
@@ -92,11 +92,12 @@ export default function WebsiteStudio() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <Card className="lg:col-span-2 p-6">
             <Tabs defaultValue="generate" className="w-full">
-              <TabsList className="grid w-full grid-cols-4">
+              <TabsList className="grid w-full grid-cols-5">
                 <TabsTrigger value="generate">Generate</TabsTrigger>
                 <TabsTrigger value="design">Design</TabsTrigger>
                 <TabsTrigger value="preview">Preview</TabsTrigger>
                 <TabsTrigger value="deploy">Deploy</TabsTrigger>
+                <TabsTrigger value="advanced">Advanced</TabsTrigger>
               </TabsList>
 
               <TabsContent value="generate" className="space-y-6 mt-6">
@@ -291,15 +292,33 @@ export default function WebsiteStudio() {
                 </ResizablePanelGroup>
               </TabsContent>
 
-              <TabsContent value="deploy" className="space-y-4 mt-6">
-                <Button className="w-full" size="lg">
-                  <ExternalLink className="w-4 h-4 mr-2" />
-                  Deploy to Replit
-                </Button>
-                <Button variant="outline" className="w-full">
-                  <Download className="w-4 h-4 mr-2" />
-                  Download ZIP
-                </Button>
+              <TabsContent value="deploy" className="mt-6">
+                <EnhancedDeployment
+                  projectCode={{ html: htmlCode, css: cssCode, js: jsCode }}
+                  projectName={projectName || "virtubuild-project"}
+                  projectId="current-project"
+                />
+              </TabsContent>
+
+              <TabsContent value="advanced" className="space-y-4 mt-6">
+                <div className="grid grid-cols-2 gap-4">
+                  <Card className="p-4">
+                    <h4 className="font-semibold mb-2">Performance</h4>
+                    <ul className="text-sm space-y-1 text-muted-foreground">
+                      <li>✓ Optimized rendering</li>
+                      <li>✓ Lazy loading</li>
+                      <li>✓ Code minification</li>
+                    </ul>
+                  </Card>
+                  <Card className="p-4">
+                    <h4 className="font-semibold mb-2">SEO Ready</h4>
+                    <ul className="text-sm space-y-1 text-muted-foreground">
+                      <li>✓ Meta tags included</li>
+                      <li>✓ Sitemap generator</li>
+                      <li>✓ robots.txt ready</li>
+                    </ul>
+                  </Card>
+                </div>
               </TabsContent>
             </Tabs>
           </Card>
