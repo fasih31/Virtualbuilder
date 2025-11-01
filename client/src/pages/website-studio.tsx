@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -9,8 +9,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Globe, Palette, Code, Smartphone, Monitor, Download, ExternalLink } from "lucide-react";
+import { Globe, Palette, Code, Smartphone, Monitor, Download, ExternalLink, Eye, FileCode, Layers, Wand2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { motion } from "framer-motion";
+import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
 
 const frameworks = [
   { value: "react", label: "React + Vite" },
@@ -42,6 +44,27 @@ export default function WebsiteStudio() {
   const [aiPrompt, setAiPrompt] = useState("");
   const [selectedTheme, setSelectedTheme] = useState(colorThemes[0]);
   const [previewMode, setPreviewMode] = useState<"desktop" | "tablet" | "mobile">("desktop");
+  const [htmlCode, setHtmlCode] = useState("<h1>Welcome to VirtuBuild</h1>");
+  const [cssCode, setCssCode] = useState("body { font-family: sans-serif; }");
+  const [jsCode, setJsCode] = useState("console.log('Hello World');");
+  const [activeEditor, setActiveEditor] = useState<"html" | "css" | "js">("html");
+  const [previewContent, setPreviewContent] = useState("");
+
+  useEffect(() => {
+    const fullCode = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <style>${cssCode}</style>
+        </head>
+        <body>
+          ${htmlCode}
+          <script>${jsCode}<\/script>
+        </body>
+      </html>
+    `;
+    setPreviewContent(fullCode);
+  }, [htmlCode, cssCode, jsCode]);
 
   const generateSite = useMutation({
     mutationFn: async (data: any) => {
@@ -168,33 +191,104 @@ export default function WebsiteStudio() {
                 </div>
               </TabsContent>
 
-              <TabsContent value="preview" className="mt-6">
-                <div className="flex gap-2 mb-4">
-                  <Button
-                    variant={previewMode === "desktop" ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setPreviewMode("desktop")}
-                  >
-                    <Monitor className="w-4 h-4" />
-                  </Button>
-                  <Button
-                    variant={previewMode === "tablet" ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setPreviewMode("tablet")}
-                  >
-                    <Smartphone className="w-4 h-4 rotate-90" />
-                  </Button>
-                  <Button
-                    variant={previewMode === "mobile" ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setPreviewMode("mobile")}
-                  >
-                    <Smartphone className="w-4 h-4" />
-                  </Button>
-                </div>
-                <Card className="h-96 flex items-center justify-center bg-muted">
-                  <p className="text-muted-foreground">Preview will appear here</p>
-                </Card>
+              <TabsContent value="preview" className="mt-6 h-[600px]">
+                <ResizablePanelGroup direction="horizontal" className="border rounded-lg">
+                  <ResizablePanel defaultSize={50} minSize={30}>
+                    <div className="h-full flex flex-col">
+                      <div className="flex items-center gap-2 p-2 border-b bg-muted/50">
+                        <Button
+                          variant={activeEditor === "html" ? "default" : "ghost"}
+                          size="sm"
+                          onClick={() => setActiveEditor("html")}
+                        >
+                          <FileCode className="w-4 h-4 mr-1" />
+                          HTML
+                        </Button>
+                        <Button
+                          variant={activeEditor === "css" ? "default" : "ghost"}
+                          size="sm"
+                          onClick={() => setActiveEditor("css")}
+                        >
+                          <Palette className="w-4 h-4 mr-1" />
+                          CSS
+                        </Button>
+                        <Button
+                          variant={activeEditor === "js" ? "default" : "ghost"}
+                          size="sm"
+                          onClick={() => setActiveEditor("js")}
+                        >
+                          <Code className="w-4 h-4 mr-1" />
+                          JS
+                        </Button>
+                      </div>
+                      <div className="flex-1 p-4 overflow-auto bg-slate-950">
+                        <Textarea
+                          value={activeEditor === "html" ? htmlCode : activeEditor === "css" ? cssCode : jsCode}
+                          onChange={(e) => {
+                            if (activeEditor === "html") setHtmlCode(e.target.value);
+                            else if (activeEditor === "css") setCssCode(e.target.value);
+                            else setJsCode(e.target.value);
+                          }}
+                          className="min-h-full font-mono text-sm bg-transparent border-none focus-visible:ring-0 text-green-400"
+                          placeholder={`Enter ${activeEditor.toUpperCase()} code...`}
+                        />
+                      </div>
+                    </div>
+                  </ResizablePanel>
+                  <ResizableHandle withHandle />
+                  <ResizablePanel defaultSize={50} minSize={30}>
+                    <div className="h-full flex flex-col">
+                      <div className="flex items-center gap-2 p-2 border-b bg-muted/50">
+                        <Eye className="w-4 h-4 text-muted-foreground" />
+                        <span className="text-sm font-medium">Live Preview</span>
+                        <div className="ml-auto flex gap-1">
+                          <Button
+                            variant={previewMode === "desktop" ? "default" : "ghost"}
+                            size="icon"
+                            className="h-7 w-7"
+                            onClick={() => setPreviewMode("desktop")}
+                          >
+                            <Monitor className="w-3 h-3" />
+                          </Button>
+                          <Button
+                            variant={previewMode === "tablet" ? "default" : "ghost"}
+                            size="icon"
+                            className="h-7 w-7"
+                            onClick={() => setPreviewMode("tablet")}
+                          >
+                            <Smartphone className="w-3 h-3 rotate-90" />
+                          </Button>
+                          <Button
+                            variant={previewMode === "mobile" ? "default" : "ghost"}
+                            size="icon"
+                            className="h-7 w-7"
+                            onClick={() => setPreviewMode("mobile")}
+                          >
+                            <Smartphone className="w-3 h-3" />
+                          </Button>
+                        </div>
+                      </div>
+                      <div className="flex-1 flex items-center justify-center bg-white p-4">
+                        <motion.div
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          className={`bg-white shadow-xl rounded-lg overflow-hidden ${
+                            previewMode === "desktop" ? "w-full h-full" :
+                            previewMode === "tablet" ? "w-[768px] h-[1024px]" :
+                            "w-[375px] h-[667px]"
+                          }`}
+                        >
+                          <iframe
+                            srcDoc={previewContent}
+                            className="w-full h-full border-0"
+                            title="Website Preview"
+                            sandbox="allow-scripts"
+                          />
+                        </motion.div>
+                      </div>
+                    </div>
+                  </ResizablePanel>
+                </ResizablePanelGroup>
               </TabsContent>
 
               <TabsContent value="deploy" className="space-y-4 mt-6">
