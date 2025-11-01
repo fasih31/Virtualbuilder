@@ -8,6 +8,10 @@ import Home from "@/pages/home";
 import Dashboard from "@/pages/dashboard";
 import Studio from "@/pages/studio";
 import Marketplace from "@/pages/marketplace";
+import AIStudio from "@/pages/ai-studio";
+import WebsiteStudio from "@/pages/website-studio";
+import BotStudio from "@/pages/bot-studio";
+import GameStudio from "@/pages/game-studio";
 import { VirtuCopilot } from "@/components/VirtuCopilot";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -39,6 +43,10 @@ function Router() {
           <Route path="/studio/:type" component={Studio} />
           <Route path="/studio/:type/:id" component={Studio} />
           <Route path="/marketplace" component={Marketplace} />
+          <Route path="/ai-studio" component={AIStudio} />
+          <Route path="/website-studio" component={WebsiteStudio} />
+          <Route path="/bot-studio" component={BotStudio} />
+          <Route path="/game-studio" component={GameStudio} />
           <Route component={NotFound} />
         </>
       )}

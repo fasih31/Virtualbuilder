@@ -46,16 +46,19 @@ const features = [
     icon: Zap,
     title: "Instant Deployment",
     description: "Deploy your projects with one click and share them instantly",
+    link: "/dashboard",
   },
   {
     icon: Sparkles,
     title: "AI-Powered",
     description: "VirtuCopilot helps you build faster with intelligent suggestions",
+    link: "/ai-studio",
   },
   {
     icon: Users,
     title: "Community Marketplace",
     description: "Discover, clone, and remix projects from the community",
+    link: "/marketplace",
   },
 ];
 
