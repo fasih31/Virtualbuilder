@@ -49,7 +49,6 @@ export default function WebsiteStudio() {
   const [cssCode, setCssCode] = useState("body { font-family: sans-serif; }");
   const [jsCode, setJsCode] = useState("console.log('Hello World');");
   const [activeEditor, setActiveEditor] = useState<"html" | "css" | "js">("html");
-  const [previewContent, setPreviewContent] = useState("");
 
   const previewContent = useMemo(() => {
     return `<!DOCTYPE html>
@@ -68,15 +67,31 @@ export default function WebsiteStudio() {
 
   const generateSite = useMutation({
     mutationFn: async (data: any) => {
-      const response = await fetch("/api/website-generate", {
+      const prompt = data.prompt || `Create a ${template} website with modern design, responsive layout, and clean code. Include HTML, CSS, and JavaScript.`;
+      
+      const response = await fetch("/api/generate/code", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
+        body: JSON.stringify({
+          prompt: prompt,
+          language: "html",
+          provider: "gemini"
+        }),
       });
       if (!response.ok) throw new Error("Generation failed");
       return response.json();
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      if (data.code) {
+        // Parse generated code into HTML, CSS, JS
+        const htmlMatch = data.code.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
+        const cssMatch = data.code.match(/<style[^>]*>([\s\S]*?)<\/style>/i);
+        const jsMatch = data.code.match(/<script[^>]*>([\s\S]*?)<\/script>/i);
+        
+        if (htmlMatch) setHtmlCode(htmlMatch[1].trim());
+        if (cssMatch) setCssCode(cssMatch[1].trim());
+        if (jsMatch) setJsCode(jsMatch[1].trim());
+      }
       toast({ title: "Website Generated!", description: "Your site is ready to customize." });
     },
   });
@@ -137,7 +152,21 @@ export default function WebsiteStudio() {
                         className={`p-4 cursor-pointer transition-all ${
                           template === t.id ? "border-primary bg-primary/5" : ""
                         }`}
-                        onClick={() => setTemplate(t.id)}
+                        onClick={async () => {
+                          setTemplate(t.id);
+                          try {
+                            const res = await fetch(`/api/templates/website/${t.id}`);
+                            if (res.ok) {
+                              const data = await res.json();
+                              setHtmlCode(data.html || '');
+                              setCssCode(data.css || '');
+                              setJsCode(data.js || '');
+                              toast({ title: "Template Loaded!", description: `${t.name} is ready to customize` });
+                            }
+                          } catch (error) {
+                            console.error('Failed to load template:', error);
+                          }
+                        }}
                       >
                         <h4 className="font-semibold">{t.name}</h4>
                         <p className="text-sm text-muted-foreground">{t.preview}</p>

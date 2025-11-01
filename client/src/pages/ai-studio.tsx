@@ -103,6 +103,7 @@ export default function AIStudio() {
   const testAI = useMutation({
     mutationFn: async (prompt: string) => {
       const messages = [
+        { role: "system", content: systemPrompt || "You are a helpful AI assistant." },
         ...conversationHistory,
         { role: "user", content: prompt }
       ];
@@ -111,24 +112,22 @@ export default function AIStudio() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
-          provider: selectedProvider, 
-          messages: [
-            { role: "system", content: systemPrompt },
-            ...messages
-          ],
+          provider: selectedProvider,
+          messages: messages,
           temperature: temperature[0],
           maxTokens: maxTokens[0]
         }),
       });
-      if (!response.ok) throw new Error("Test failed");
+      if (!response.ok) throw new Error("AI request failed");
       return response.json();
     },
     onSuccess: (data) => {
-      setTestResponse(data.response);
+      const aiResponse = data.response || "No response from AI";
+      setTestResponse(aiResponse);
       setConversationHistory([
         ...conversationHistory,
         { role: "user", content: testPrompt },
-        { role: "assistant", content: data.response }
+        { role: "assistant", content: aiResponse }
       ]);
       setTestPrompt("");
     },

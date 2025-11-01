@@ -1,5 +1,5 @@
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 
 // Debounce function for input handlers
 export function useDebounce<T>(value: T, delay: number): T {

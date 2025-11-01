@@ -235,6 +235,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Template loading
+  app.get("/api/templates/:type/:template", async (req, res) => {
+    try {
+      const { type, template } = req.params;
+      const { websiteTemplates, aiTemplates, gameTemplates } = await import("./templates");
+      
+      let templateData;
+      if (type === 'website') templateData = websiteTemplates[template];
+      else if (type === 'ai') templateData = aiTemplates[template];
+      else if (type === 'game') templateData = gameTemplates[template];
+      
+      if (!templateData) {
+        return res.status(404).json({ error: "Template not found" });
+      }
+      
+      res.json(templateData);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // Code Generation API (accessible to guests)
   app.post("/api/generate/code", async (req, res) => {
     try {

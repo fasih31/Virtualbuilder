@@ -33,16 +33,25 @@ export default function GameStudio() {
 
   const generateGame = useMutation({
     mutationFn: async (data: any) => {
-      const response = await fetch("/api/game-generate", {
+      const prompt = data.prompt || "Create a simple browser-based game with HTML5 Canvas and JavaScript";
+      
+      const response = await fetch("/api/generate/code", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
+        body: JSON.stringify({
+          prompt: `${prompt}. Use ${engine} framework. Include complete game logic, rendering, and controls.`,
+          language: engine === "kaboom" ? "javascript" : "python",
+          provider: "gemini"
+        }),
       });
       if (!response.ok) throw new Error("Generation failed");
       return response.json();
     },
-    onSuccess: () => {
-      toast({ title: "Game Generated!", description: "Your game is ready to play and customize." });
+    onSuccess: (data) => {
+      toast({ 
+        title: "Game Generated!", 
+        description: "Your game code is ready! Check the code editor." 
+      });
     },
   });
 

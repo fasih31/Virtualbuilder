@@ -37,16 +37,28 @@ export default function BotStudio() {
 
   const createBot = useMutation({
     mutationFn: async (data: any) => {
-      const response = await fetch("/api/bot-create", {
+      const prompt = `Create a ${platform} bot with the following features:
+        - Template: ${template}
+        - Commands: ${JSON.stringify(commands)}
+        Generate complete bot code with proper error handling and platform integration.`;
+      
+      const response = await fetch("/api/generate/code", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
+        body: JSON.stringify({
+          prompt: prompt,
+          language: platform === "discord" ? "javascript" : "python",
+          provider: "gemini"
+        }),
       });
       if (!response.ok) throw new Error("Failed to create bot");
       return response.json();
     },
-    onSuccess: () => {
-      toast({ title: "Bot Created!", description: "Your bot is ready to deploy." });
+    onSuccess: (data) => {
+      toast({ 
+        title: "Bot Created!", 
+        description: "Your bot code is ready! Download and deploy it." 
+      });
     },
   });
 
