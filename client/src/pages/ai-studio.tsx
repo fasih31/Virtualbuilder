@@ -16,6 +16,9 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { debounce } from "lodash";
+import VisualPromptEditor from "@/components/VisualPromptEditor";
+import ModelSwitcher from "@/components/ModelSwitcher";
+import DocumentContextManager from "@/components/DocumentContextManager";
 
 const llmProviders = [
   { value: "openai", label: "OpenAI GPT-4", icon: "🤖" },
@@ -47,6 +50,8 @@ export default function AIStudio() {
   const [maxTokens, setMaxTokens] = useState([2048]);
   const [conversationHistory, setConversationHistory] = useState<any[]>([]);
   const [streaming, setStreaming] = useState(true);
+  const [documents, setDocuments] = useState<any[]>([]);
+  const [selectedModel, setSelectedModel] = useState("gpt-4o-mini");
   const recognitionRef = useRef<any>(null);
   const { isGuest } = useAuth();
 
@@ -102,8 +107,17 @@ export default function AIStudio() {
 
   const testAI = useMutation({
     mutationFn: async (prompt: string) => {
+      let contextualSystemPrompt = systemPrompt || "You are a helpful AI assistant.";
+      
+      if (documents.length > 0) {
+        contextualSystemPrompt += "\n\nYou have access to the following documents for context:\n";
+        documents.forEach((doc, idx) => {
+          contextualSystemPrompt += `\nDocument ${idx + 1} (${doc.name}):\n${doc.content}\n`;
+        });
+      }
+
       const messages = [
-        { role: "system", content: systemPrompt || "You are a helpful AI assistant." },
+        { role: "system", content: contextualSystemPrompt },
         ...conversationHistory,
         { role: "user", content: prompt }
       ];
@@ -115,7 +129,8 @@ export default function AIStudio() {
           provider: selectedProvider,
           messages: messages,
           temperature: temperature[0],
-          maxTokens: maxTokens[0]
+          maxTokens: maxTokens[0],
+          model: selectedModel
         }),
       });
       if (!response.ok) throw new Error("AI request failed");
@@ -156,11 +171,26 @@ export default function AIStudio() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <Card className="lg:col-span-2 p-6">
             <Tabs defaultValue="builder" className="w-full">
-              <TabsList className="grid w-full grid-cols-3">
+              <TabsList className="grid w-full grid-cols-5">
                 <TabsTrigger value="builder">Builder</TabsTrigger>
+                <TabsTrigger value="prompt">Prompt</TabsTrigger>
+                <TabsTrigger value="context">Context</TabsTrigger>
                 <TabsTrigger value="test">Test</TabsTrigger>
                 <TabsTrigger value="deploy">Deploy</TabsTrigger>
               </TabsList>
+
+              <TabsContent value="prompt" className="mt-6">
+                <VisualPromptEditor
+                  onPromptGenerated={(prompt) => setSystemPrompt(prompt)}
+                  initialPrompt={systemPrompt}
+                />
+              </TabsContent>
+
+              <TabsContent value="context" className="mt-6">
+                <DocumentContextManager
+                  onContextUpdate={(docs) => setDocuments(docs)}
+                />
+              </TabsContent>
 
               <TabsContent value="builder" className="space-y-6 mt-6">
                 <div>
@@ -169,6 +199,14 @@ export default function AIStudio() {
                     placeholder="My AI Assistant"
                     value={projectName}
                     onChange={(e) => setProjectName(e.target.value)}
+                  />
+                </div>
+
+                <div>
+                  <Label>AI Model</Label>
+                  <ModelSwitcher
+                    selectedModel={selectedModel}
+                    onModelChange={setSelectedModel}
                   />
                 </div>
 
