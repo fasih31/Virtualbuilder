@@ -1,131 +1,270 @@
 
-import { useState } from "react";
-import { Card } from "@/components/ui/card";
+import { useEffect, useRef, useState } from "react";
+import Editor from "@monaco-editor/react";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Textarea } from "@/components/ui/textarea";
-import { Copy, Download, Play, FileCode, Palette, Code } from "lucide-react";
+import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { 
+  Play, 
+  Download, 
+  Copy, 
+  Check, 
+  Save, 
+  Eye, 
+  Code2, 
+  Maximize2,
+  Settings,
+  FileCode
+} from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import Split from "react-split";
+import { saveAs } from "file-saver";
+import prettier from "prettier/standalone";
+import parserBabel from "prettier/parser-babel";
+import parserHtml from "prettier/parser-html";
+import parserCss from "prettier/parser-postcss";
 
 interface CodeEditorProps {
-  initialHtml?: string;
-  initialCss?: string;
-  initialJs?: string;
-  onCodeChange?: (html: string, css: string, js: string) => void;
+  initialCode?: string;
+  language?: string;
+  onRun?: (code: string) => void;
+  showPreview?: boolean;
+  projectName?: string;
 }
 
-export function CodeEditor({ 
-  initialHtml = "", 
-  initialCss = "", 
-  initialJs = "",
-  onCodeChange 
+export default function CodeEditor({
+  initialCode = "",
+  language = "javascript",
+  onRun,
+  showPreview = true,
+  projectName = "untitled"
 }: CodeEditorProps) {
-  const [html, setHtml] = useState(initialHtml);
-  const [css, setCss] = useState(initialCss);
-  const [js, setJs] = useState(initialJs);
-  const [activeTab, setActiveTab] = useState("html");
+  const [code, setCode] = useState(initialCode);
+  const [output, setOutput] = useState("");
+  const [copied, setCopied] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [viewMode, setViewMode] = useState<"split" | "code" | "preview">("split");
   const { toast } = useToast();
+  const editorRef = useRef<any>(null);
 
-  const handleCodeChange = (type: string, value: string) => {
-    if (type === "html") setHtml(value);
-    else if (type === "css") setCss(value);
-    else setJs(value);
-    
-    onCodeChange?.(
-      type === "html" ? value : html,
-      type === "css" ? value : css,
-      type === "js" ? value : js
-    );
+  // Auto-save functionality
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      localStorage.setItem(`code_${projectName}`, code);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, [code, projectName]);
+
+  const handleEditorDidMount = (editor: any) => {
+    editorRef.current = editor;
   };
 
-  const copyCode = () => {
-    const code = activeTab === "html" ? html : activeTab === "css" ? css : js;
-    navigator.clipboard.writeText(code);
-    toast({ title: "Copied!", description: "Code copied to clipboard" });
+  const handleRun = () => {
+    if (onRun) {
+      onRun(code);
+    }
+    
+    // For demo purposes, simulate output
+    try {
+      if (language === "javascript") {
+        const result = eval(code);
+        setOutput(String(result));
+      } else if (language === "html") {
+        setOutput(code);
+      }
+      toast({
+        title: "Code executed",
+        description: "Check the preview panel for output",
+      });
+    } catch (error: any) {
+      setOutput(`Error: ${error.message}`);
+      toast({
+        title: "Execution error",
+        description: error.message,
+        variant: "destructive"
+      });
+    }
   };
 
-  const downloadCode = () => {
-    const fullCode = `
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>VirtuBuild Project</title>
-  <style>${css}</style>
-</head>
-<body>
-  ${html}
-  <script>${js}<\/script>
-</body>
-</html>
-    `;
-    
-    const blob = new Blob([fullCode], { type: 'text/html' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'virtubuild-project.html';
-    a.click();
-    URL.revokeObjectURL(url);
+  const handleCopy = async () => {
+    await navigator.clipboard.writeText(code);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+    toast({
+      title: "Copied!",
+      description: "Code copied to clipboard",
+    });
+  };
+
+  const handleDownload = () => {
+    const blob = new Blob([code], { type: "text/plain;charset=utf-8" });
+    const extension = language === "javascript" ? "js" : language === "python" ? "py" : language;
+    saveAs(blob, `${projectName}.${extension}`);
+    toast({
+      title: "Downloaded",
+      description: `${projectName}.${extension} saved`,
+    });
+  };
+
+  const handleFormat = async () => {
+    try {
+      let formatted = code;
+      if (language === "javascript" || language === "typescript") {
+        formatted = await prettier.format(code, {
+          parser: "babel",
+          plugins: [parserBabel],
+        });
+      } else if (language === "html") {
+        formatted = await prettier.format(code, {
+          parser: "html",
+          plugins: [parserHtml],
+        });
+      } else if (language === "css") {
+        formatted = await prettier.format(code, {
+          parser: "css",
+          plugins: [parserCss],
+        });
+      }
+      setCode(formatted);
+      toast({
+        title: "Formatted",
+        description: "Code has been formatted",
+      });
+    } catch (error) {
+      toast({
+        title: "Format error",
+        description: "Could not format code",
+        variant: "destructive"
+      });
+    }
   };
 
   return (
-    <Card className="h-full flex flex-col">
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
-        <div className="flex items-center justify-between p-3 border-b">
-          <TabsList>
-            <TabsTrigger value="html" className="gap-2">
-              <FileCode className="w-4 h-4" />
-              HTML
-            </TabsTrigger>
-            <TabsTrigger value="css" className="gap-2">
-              <Palette className="w-4 h-4" />
-              CSS
-            </TabsTrigger>
-            <TabsTrigger value="js" className="gap-2">
-              <Code className="w-4 h-4" />
-              JavaScript
-            </TabsTrigger>
-          </TabsList>
-          
-          <div className="flex gap-2">
-            <Button size="sm" variant="ghost" onClick={copyCode}>
-              <Copy className="w-4 h-4" />
-            </Button>
-            <Button size="sm" variant="ghost" onClick={downloadCode}>
-              <Download className="w-4 h-4" />
-            </Button>
-          </div>
+    <div className="h-full flex flex-col">
+      {/* Toolbar */}
+      <Card className="p-3 mb-2 flex items-center justify-between gap-2 flex-wrap">
+        <div className="flex items-center gap-2">
+          <Badge variant="secondary" className="font-mono">
+            <FileCode className="w-3 h-3 mr-1" />
+            {language}
+          </Badge>
+          {saved && (
+            <Badge variant="outline" className="text-green-500 border-green-500">
+              <Check className="w-3 h-3 mr-1" />
+              Saved
+            </Badge>
+          )}
         </div>
 
-        <TabsContent value="html" className="flex-1 m-0 p-0">
-          <Textarea
-            value={html}
-            onChange={(e) => handleCodeChange("html", e.target.value)}
-            className="h-full resize-none border-0 rounded-none font-mono text-sm focus-visible:ring-0"
-            placeholder="Enter HTML code..."
-          />
-        </TabsContent>
+        <div className="flex items-center gap-2">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setViewMode(viewMode === "split" ? "code" : viewMode === "code" ? "preview" : "split")}
+          >
+            {viewMode === "split" && <Maximize2 className="w-4 h-4 mr-1" />}
+            {viewMode === "code" && <Eye className="w-4 h-4 mr-1" />}
+            {viewMode === "preview" && <Code2 className="w-4 h-4 mr-1" />}
+            {viewMode}
+          </Button>
+          <Button size="sm" variant="outline" onClick={handleFormat}>
+            <Settings className="w-4 h-4 mr-1" />
+            Format
+          </Button>
+          <Button size="sm" variant="outline" onClick={handleCopy}>
+            {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+          </Button>
+          <Button size="sm" variant="outline" onClick={handleDownload}>
+            <Download className="w-4 h-4" />
+          </Button>
+          <Button size="sm" onClick={handleRun}>
+            <Play className="w-4 h-4 mr-1" />
+            Run
+          </Button>
+        </div>
+      </Card>
 
-        <TabsContent value="css" className="flex-1 m-0 p-0">
-          <Textarea
-            value={css}
-            onChange={(e) => handleCodeChange("css", e.target.value)}
-            className="h-full resize-none border-0 rounded-none font-mono text-sm focus-visible:ring-0"
-            placeholder="Enter CSS code..."
+      {/* Editor and Preview */}
+      <div className="flex-1 overflow-hidden">
+        {viewMode === "code" ? (
+          <Editor
+            height="100%"
+            defaultLanguage={language}
+            value={code}
+            onChange={(value) => setCode(value || "")}
+            onMount={handleEditorDidMount}
+            theme="vs-dark"
+            options={{
+              minimap: { enabled: true },
+              fontSize: 14,
+              lineNumbers: "on",
+              automaticLayout: true,
+              scrollBeyondLastLine: false,
+              wordWrap: "on",
+              tabSize: 2,
+            }}
           />
-        </TabsContent>
-
-        <TabsContent value="js" className="flex-1 m-0 p-0">
-          <Textarea
-            value={js}
-            onChange={(e) => handleCodeChange("js", e.target.value)}
-            className="h-full resize-none border-0 rounded-none font-mono text-sm focus-visible:ring-0"
-            placeholder="Enter JavaScript code..."
-          />
-        </TabsContent>
-      </Tabs>
-    </Card>
+        ) : viewMode === "preview" && showPreview ? (
+          <Card className="h-full p-4 overflow-auto bg-white dark:bg-gray-900">
+            {language === "html" ? (
+              <iframe
+                srcDoc={output || code}
+                className="w-full h-full border-0"
+                title="Preview"
+              />
+            ) : (
+              <pre className="text-sm font-mono whitespace-pre-wrap">
+                {output || "Run code to see output"}
+              </pre>
+            )}
+          </Card>
+        ) : (
+          <Split
+            className="flex h-full"
+            sizes={[50, 50]}
+            minSize={300}
+            gutterSize={8}
+            direction="horizontal"
+          >
+            <div className="overflow-hidden">
+              <Editor
+                height="100%"
+                defaultLanguage={language}
+                value={code}
+                onChange={(value) => setCode(value || "")}
+                onMount={handleEditorDidMount}
+                theme="vs-dark"
+                options={{
+                  minimap: { enabled: true },
+                  fontSize: 14,
+                  lineNumbers: "on",
+                  automaticLayout: true,
+                  scrollBeyondLastLine: false,
+                  wordWrap: "on",
+                  tabSize: 2,
+                }}
+              />
+            </div>
+            {showPreview && (
+              <Card className="h-full p-4 overflow-auto bg-white dark:bg-gray-900">
+                {language === "html" ? (
+                  <iframe
+                    srcDoc={output || code}
+                    className="w-full h-full border-0"
+                    title="Preview"
+                  />
+                ) : (
+                  <pre className="text-sm font-mono whitespace-pre-wrap">
+                    {output || "Run code to see output"}
+                  </pre>
+                )}
+              </Card>
+            )}
+          </Split>
+        )}
+      </div>
+    </div>
   );
 }
