@@ -255,7 +255,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // AI Chat API - uses free Gemini only
+  // AI Chat API - uses completely free open-source models
   app.post("/api/ai/chat", async (req: any, res) => {
     try {
       const { messages } = req.body;
@@ -264,33 +264,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Messages array is required" });
       }
 
-      // Get user's Gemini API key or use system key
-      let apiKey = process.env.GEMINI_API_KEY || '';
-      if (req.user) {
-        const userId = req.user.claims.sub;
-        const keys = await storage.getUserApiKeys(userId);
-        const userKey = keys.find((k: any) => k.provider === 'gemini' && k.isActive);
-        
-        if (userKey) {
-          apiKey = decryptApiKey(userKey.encryptedKey);
-        }
-      }
-
-      if (!apiKey) {
-        return res.status(400).json({ 
-          error: 'No Gemini API key found. Get a free key at https://makersuite.google.com/app/apikey' 
-        });
-      }
-
       const prompt = messages.map((m: any) => m.content).join('\n');
-      const response = await aiProvider.generateWithAI({
-        provider: 'gemini',
-        model: 'gemini-1.5-flash',
-        prompt,
-        apiKey
-      });
+      const response = await aiProvider.generateWithAI({ prompt });
 
-      res.json({ response, provider: 'gemini' });
+      res.json({ response, provider: 'huggingface-free' });
     } catch (error: any) {
       console.error("AI Chat error:", error);
       res.status(500).json({ error: error.message });
@@ -353,7 +330,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Code Generation API - uses free Gemini only
+  // Code Generation API - uses completely free open-source models
   app.post("/api/generate/code", async (req: any, res) => {
     try {
       const { prompt, language = "javascript" } = req.body;
@@ -362,62 +339,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Prompt is required" });
       }
 
-      // Get user's Gemini API key or use system key
-      let apiKey = process.env.GEMINI_API_KEY || '';
-      if (req.user) {
-        const userId = req.user.claims.sub;
-        const keys = await storage.getUserApiKeys(userId);
-        const userKey = keys.find((k: any) => k.provider === 'gemini' && k.isActive);
-        
-        if (userKey) {
-          apiKey = decryptApiKey(userKey.encryptedKey);
-        }
-      }
-
-      if (!apiKey) {
-        return res.status(400).json({ 
-          error: 'No Gemini API key found. Get a free key at https://makersuite.google.com/app/apikey' 
-        });
-      }
-
       const fullPrompt = `You are an expert ${language} code generator. Generate clean, well-documented, production-ready code based on the user's requirements. Return ONLY the code, no explanations or markdown.\n\nUser request: ${prompt}`;
 
       const code = await aiProvider.generateWithAI({
-        provider: 'gemini',
-        model: 'gemini-1.5-flash',
         prompt: fullPrompt,
-        apiKey,
         maxTokens: 8192
       });
 
-      res.json({ code, provider: 'gemini', language });
+      res.json({ code, provider: 'huggingface-free', language });
     } catch (error: any) {
       console.error("Code generation error:", error);
       res.status(500).json({ error: error.message });
     }
   });
 
-  // Web3 Contract Generation - uses free Gemini
+  // Web3 Contract Generation - uses completely free open-source models
   app.post("/api/web3/create", isAuthenticated, async (req: any, res) => {
     try {
       const { template, name, parameters, prompt: customPrompt } = req.body;
-      
-      let apiKey = process.env.GEMINI_API_KEY || '';
-      if (req.user) {
-        const userId = req.user.claims.sub;
-        const keys = await storage.getUserApiKeys(userId);
-        const userKey = keys.find((k: any) => k.provider === 'gemini' && k.isActive);
-        
-        if (userKey) {
-          apiKey = decryptApiKey(userKey.encryptedKey);
-        }
-      }
-
-      if (!apiKey) {
-        return res.status(400).json({ 
-          error: 'No Gemini API key found. Get a free key at https://makersuite.google.com/app/apikey' 
-        });
-      }
       
       let contractPrompt = "";
       if (template === "erc20") {
@@ -434,10 +373,7 @@ Include proper licensing (MIT), OpenZeppelin imports, security features, and det
       }
 
       const code = await aiProvider.generateWithAI({
-        provider: 'gemini',
-        model: 'gemini-1.5-flash',
         prompt: contractPrompt,
-        apiKey,
         maxTokens: 8192
       });
 
@@ -451,23 +387,6 @@ Include proper licensing (MIT), OpenZeppelin imports, security features, and det
     try {
       const { code } = req.body;
 
-      let apiKey = process.env.GEMINI_API_KEY || '';
-      if (req.user) {
-        const userId = req.user.claims.sub;
-        const keys = await storage.getUserApiKeys(userId);
-        const userKey = keys.find((k: any) => k.provider === 'gemini' && k.isActive);
-        
-        if (userKey) {
-          apiKey = decryptApiKey(userKey.encryptedKey);
-        }
-      }
-
-      if (!apiKey) {
-        return res.status(400).json({ 
-          error: 'No Gemini API key found. Get a free key at https://makersuite.google.com/app/apikey' 
-        });
-      }
-
       const auditPrompt = `You are a smart contract security auditor. Analyze this Solidity smart contract for:
 1. Security vulnerabilities (reentrancy, overflow, access control, etc.)
 2. Gas optimization opportunities
@@ -480,10 +399,7 @@ ${code}
 Provide a detailed security audit report with severity levels (Critical, High, Medium, Low) for each finding.`;
 
       const audit = await aiProvider.generateWithAI({
-        provider: 'gemini',
-        model: 'gemini-1.5-flash',
         prompt: auditPrompt,
-        apiKey,
         maxTokens: 8192
       });
 
