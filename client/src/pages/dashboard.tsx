@@ -244,7 +244,7 @@ export default function Dashboard() {
           </Select>
         </div>
 
-        {/* Analytics Overview - Everything is FREE */}
+        {/* Analytics Overview */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
           <Card className="p-4">
             <div className="flex items-center justify-between">
@@ -259,19 +259,19 @@ export default function Dashboard() {
           <Card className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">Deployments</p>
-                <p className="text-2xl font-bold">Unlimited</p>
-                <p className="text-xs text-green-500 mt-1">100% Free</p>
+                <p className="text-sm text-muted-foreground">API Setup</p>
+                <p className="text-xl font-bold">Configure Keys</p>
+                <p className="text-xs text-amber-500 mt-1">See API_SETUP.md</p>
               </div>
-              <Zap className="w-8 h-8 text-green-500 opacity-50" />
+              <Zap className="w-8 h-8 text-amber-500 opacity-50" />
             </div>
           </Card>
           <Card className="p-4">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">AI Models</p>
-                <p className="text-2xl font-bold">All Access</p>
-                <p className="text-xs text-green-500 mt-1">No Charges</p>
+                <p className="text-2xl font-bold">3 Providers</p>
+                <p className="text-xs text-blue-500 mt-1">OpenAI, Claude, Gemini</p>
               </div>
               <Users className="w-8 h-8 text-blue-500 opacity-50" />
             </div>
@@ -279,11 +279,11 @@ export default function Dashboard() {
           <Card className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">Plan</p>
+                <p className="text-sm text-muted-foreground">Platform</p>
                 <p className="text-2xl font-bold">Free Forever</p>
-                <p className="text-xs text-green-500 mt-1">$0/month</p>
+                <p className="text-xs text-green-500 mt-1">No Platform Fees</p>
               </div>
-              <TrendingUp className="w-8 h-8 text-orange-500 opacity-50" />
+              <TrendingUp className="w-8 h-8 text-green-500 opacity-50" />
             </div>
           </Card>
         </div>
