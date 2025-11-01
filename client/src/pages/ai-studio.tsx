@@ -16,15 +16,10 @@ export default function AIStudio() {
   const { toast } = useToast();
   const [prompt, setPrompt] = useState("");
   const [systemPrompt, setSystemPrompt] = useState("You are a helpful AI assistant.");
-  const [provider, setProvider] = useState("openai");
-  const [model, setModel] = useState("gpt-4o-mini");
+  const [model, setModel] = useState("gemini-1.5-flash");
   const [messages, setMessages] = useState<Array<{ role: string; content: string }>>([]);
 
-  const models = {
-    openai: ["gpt-4o-mini", "gpt-4o", "gpt-3.5-turbo"],
-    anthropic: ["claude-3-5-sonnet-20241022", "claude-3-haiku-20240307"],
-    gemini: ["gemini-1.5-flash", "gemini-1.5-pro"]
-  };
+  const models = ["gemini-1.5-flash", "gemini-1.5-pro", "gemini-2.0-flash-exp"];
 
   const chatMutation = useMutation({
     mutationFn: async (userMessage: string) => {
@@ -36,9 +31,7 @@ export default function AIStudio() {
             { role: "system", content: systemPrompt },
             ...messages,
             { role: "user", content: userMessage }
-          ],
-          provider: provider,
-          model: model
+          ]
         }),
       });
 
@@ -96,32 +89,15 @@ export default function AIStudio() {
         <div className="grid gap-6">
           {/* Settings Panel */}
           <Card className="p-6">
-            <div className="grid md:grid-cols-3 gap-4 mb-4">
+            <div className="grid md:grid-cols-2 gap-4 mb-4">
               <div>
-                <Label className="mb-2 block">AI Provider</Label>
-                <Select value={provider} onValueChange={(value) => {
-                  setProvider(value);
-                  setModel(models[value as keyof typeof models][0]);
-                }}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="openai">OpenAI</SelectItem>
-                    <SelectItem value="anthropic">Anthropic</SelectItem>
-                    <SelectItem value="gemini">Google Gemini</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div>
-                <Label className="mb-2 block">Model</Label>
+                <Label className="mb-2 block">AI Model (Free Gemini)</Label>
                 <Select value={model} onValueChange={setModel}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {models[provider as keyof typeof models].map((m) => (
+                    {models.map((m) => (
                       <SelectItem key={m} value={m}>{m}</SelectItem>
                     ))}
                   </SelectContent>
@@ -154,7 +130,7 @@ export default function AIStudio() {
                 <div className="text-center py-12 text-muted-foreground">
                   <Sparkles className="w-12 h-12 mx-auto mb-4 opacity-50" />
                   <p>Start a conversation with AI</p>
-                  <p className="text-sm mt-2">Using {provider} - {model}</p>
+                  <p className="text-sm mt-2">Using Free Google Gemini - {model}</p>
                 </div>
               ) : (
                 messages.map((msg, idx) => (

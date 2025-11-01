@@ -1,10 +1,10 @@
-import OpenAI from "openai";
-import Anthropic from "@anthropic-ai/sdk";
-import { GoogleGenerativeAI } from "@google/generative-ai";
 import crypto from "crypto";
 
 const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY || crypto.randomBytes(32).toString('hex');
 const ALGORITHM = 'aes-256-gcm';
+
+// Default to free Gemini API
+const DEFAULT_GEMINI_KEY = process.env.GEMINI_API_KEY || '';
 
 export function encryptApiKey(apiKey: string): string {
   const iv = crypto.randomBytes(16);
@@ -42,81 +42,41 @@ interface AIGenerateOptions {
 }
 
 export async function generateWithAI(options: AIGenerateOptions): Promise<string> {
-  const { provider, model, prompt, apiKey, temperature = 0.7, maxTokens = 2000 } = options;
+  const { provider = 'gemini', model, prompt, apiKey, temperature = 0.7, maxTokens = 4096 } = options;
 
   try {
-    if (provider === 'openai') {
-      const response = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${apiKey}`
-        },
-        body: JSON.stringify({
-          model: model || 'gpt-4o-mini',
-          messages: [{ role: 'user', content: prompt }],
+    // Always use Gemini (free) by default
+    const finalProvider = provider === 'openai' || provider === 'anthropic' ? 'gemini' : provider;
+    const finalApiKey = apiKey || DEFAULT_GEMINI_KEY;
+    
+    if (!finalApiKey) {
+      throw new Error('No Gemini API key found. Please add GEMINI_API_KEY in Secrets or provide your own in Settings.');
+    }
+
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model || 'gemini-1.5-flash'}:generateContent?key=${finalApiKey}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: {
           temperature,
-          max_tokens: maxTokens
-        })
-      });
+          maxOutputTokens: maxTokens
+        }
+      })
+    });
 
-      if (!response.ok) {
-        const error = await response.text();
-        throw new Error(`OpenAI API error: ${error}`);
-      }
-
-      const data = await response.json();
-      return data.choices[0].message.content;
-    } 
-
-    else if (provider === 'gemini') {
-      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model || 'gemini-1.5-flash'}:generateContent?key=${apiKey}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: {
-            temperature,
-            maxOutputTokens: maxTokens
-          }
-        })
-      });
-
-      if (!response.ok) {
-        const error = await response.text();
-        throw new Error(`Gemini API error: ${error}`);
-      }
-
-      const data = await response.json();
-      return data.candidates[0].content.parts[0].text;
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(`Gemini API error: ${error}`);
     }
 
-    else if (provider === 'anthropic') {
-      const response = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': apiKey,
-          'anthropic-version': '2023-06-01'
-        },
-        body: JSON.stringify({
-          model: model || 'claude-3-5-sonnet-20241022',
-          max_tokens: maxTokens,
-          messages: [{ role: 'user', content: prompt }],
-          temperature
-        })
-      });
-
-      if (!response.ok) {
-        const error = await response.text();
-        throw new Error(`Anthropic API error: ${error}`);
-      }
-
-      const data = await response.json();
-      return data.content[0].text;
+    const data = await response.json();
+    
+    if (!data.candidates || !data.candidates[0] || !data.candidates[0].content) {
+      throw new Error('Invalid response from Gemini API');
     }
-
-    throw new Error(`Unsupported provider: ${provider}`);
+    
+    return data.candidates[0].content.parts[0].text;
   } catch (error: any) {
     throw new Error(`AI Generation failed: ${error.message}`);
   }

@@ -3,38 +3,9 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { insertProjectSchema, insertMarketplaceItemSchema, insertConversationSchema, insertApiKeySchema, insertPromptTemplateSchema } from "@shared/schema";
 import { setupAuth, isAuthenticated } from "./replitAuth";
-import OpenAI from "openai";
-import Anthropic from "@anthropic-ai/sdk";
-import { GoogleGenerativeAI } from "@google/generative-ai";
 import { deploymentService } from "./deploymentService";
 import JSZip from "jszip";
 import { aiProvider, encryptApiKey, decryptApiKey } from "./aiProvider";
-
-// Lazy-load AI clients only when API keys are available
-let openai: OpenAI | null = null;
-let anthropic: Anthropic | null = null;
-let genAI: GoogleGenerativeAI | null = null;
-
-function getOpenAI() {
-  if (!openai && process.env.OPENAI_API_KEY) {
-    openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-  }
-  return openai;
-}
-
-function getAnthropic() {
-  if (!anthropic && process.env.ANTHROPIC_API_KEY) {
-    anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-  }
-  return anthropic;
-}
-
-function getGemini() {
-  if (!genAI && process.env.GEMINI_API_KEY) {
-    genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-  }
-  return genAI;
-}
 
 export async function registerRoutes(app: Express): Promise<Server> {
   
@@ -284,51 +255,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // AI Chat API - uses user's API keys
+  // AI Chat API - uses free Gemini only
   app.post("/api/ai/chat", async (req: any, res) => {
     try {
-      const { messages, provider = "openai", model } = req.body;
+      const { messages } = req.body;
 
       if (!messages || !Array.isArray(messages)) {
         return res.status(400).json({ error: "Messages array is required" });
       }
 
-      // Get user's API key for this provider
-      let apiKey = '';
+      // Get user's Gemini API key or use system key
+      let apiKey = process.env.GEMINI_API_KEY || '';
       if (req.user) {
         const userId = req.user.claims.sub;
         const keys = await storage.getUserApiKeys(userId);
-        const userKey = keys.find((k: any) => k.provider === provider && k.isActive);
+        const userKey = keys.find((k: any) => k.provider === 'gemini' && k.isActive);
         
         if (userKey) {
           apiKey = decryptApiKey(userKey.encryptedKey);
         }
       }
 
-      // Fallback to system keys if user doesn't have one
       if (!apiKey) {
-        if (provider === "openai" && process.env.OPENAI_API_KEY) {
-          apiKey = process.env.OPENAI_API_KEY;
-        } else if (provider === "gemini" && process.env.GEMINI_API_KEY) {
-          apiKey = process.env.GEMINI_API_KEY;
-        } else if (provider === "anthropic" && process.env.ANTHROPIC_API_KEY) {
-          apiKey = process.env.ANTHROPIC_API_KEY;
-        } else {
-          return res.status(400).json({ 
-            error: `No API key found for ${provider}. Please add your API key in Settings.` 
-          });
-        }
+        return res.status(400).json({ 
+          error: 'No Gemini API key found. Get a free key at https://makersuite.google.com/app/apikey' 
+        });
       }
 
       const prompt = messages.map((m: any) => m.content).join('\n');
       const response = await aiProvider.generateWithAI({
-        provider,
-        model: model || (provider === 'openai' ? 'gpt-4o-mini' : provider === 'gemini' ? 'gemini-1.5-flash' : 'claude-3-5-sonnet-20241022'),
+        provider: 'gemini',
+        model: 'gemini-1.5-flash',
         prompt,
         apiKey
       });
 
-      res.json({ response, provider });
+      res.json({ response, provider: 'gemini' });
     } catch (error: any) {
       console.error("AI Chat error:", error);
       res.status(500).json({ error: error.message });
@@ -391,119 +353,140 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Code Generation API
+  // Code Generation API - uses free Gemini only
   app.post("/api/generate/code", async (req: any, res) => {
     try {
-      const { prompt, language = "javascript", provider = "openai", model } = req.body;
+      const { prompt, language = "javascript" } = req.body;
 
       if (!prompt) {
         return res.status(400).json({ error: "Prompt is required" });
       }
 
-      // Get user's API key
-      let apiKey = '';
+      // Get user's Gemini API key or use system key
+      let apiKey = process.env.GEMINI_API_KEY || '';
       if (req.user) {
         const userId = req.user.claims.sub;
         const keys = await storage.getUserApiKeys(userId);
-        const userKey = keys.find((k: any) => k.provider === provider && k.isActive);
+        const userKey = keys.find((k: any) => k.provider === 'gemini' && k.isActive);
         
         if (userKey) {
           apiKey = decryptApiKey(userKey.encryptedKey);
         }
       }
 
-      // Fallback to system keys
       if (!apiKey) {
-        if (provider === "openai" && process.env.OPENAI_API_KEY) {
-          apiKey = process.env.OPENAI_API_KEY;
-        } else if (provider === "gemini" && process.env.GEMINI_API_KEY) {
-          apiKey = process.env.GEMINI_API_KEY;
-        } else if (provider === "anthropic" && process.env.ANTHROPIC_API_KEY) {
-          apiKey = process.env.ANTHROPIC_API_KEY;
-        } else {
-          return res.status(400).json({ 
-            error: `No API key found for ${provider}. Please add your API key in the API Keys section.` 
-          });
-        }
+        return res.status(400).json({ 
+          error: 'No Gemini API key found. Get a free key at https://makersuite.google.com/app/apikey' 
+        });
       }
 
       const fullPrompt = `You are an expert ${language} code generator. Generate clean, well-documented, production-ready code based on the user's requirements. Return ONLY the code, no explanations or markdown.\n\nUser request: ${prompt}`;
 
       const code = await aiProvider.generateWithAI({
-        provider,
-        model: model || (provider === 'openai' ? 'gpt-4o-mini' : provider === 'gemini' ? 'gemini-1.5-flash' : 'claude-3-5-sonnet-20241022'),
+        provider: 'gemini',
+        model: 'gemini-1.5-flash',
         prompt: fullPrompt,
         apiKey,
-        maxTokens: 4000
+        maxTokens: 8192
       });
 
-      res.json({ code, provider, language });
+      res.json({ code, provider: 'gemini', language });
     } catch (error: any) {
       console.error("Code generation error:", error);
       res.status(500).json({ error: error.message });
     }
   });
 
-  // Web3 Contract Generation
-  app.post("/api/web3/create", isAuthenticated, async (req, res) => {
+  // Web3 Contract Generation - uses free Gemini
+  app.post("/api/web3/create", isAuthenticated, async (req: any, res) => {
     try {
-      const { template, name, parameters } = req.body;
+      const { template, name, parameters, prompt: customPrompt } = req.body;
       
-      const client = getOpenAI();
-      if (!client) {
-        return res.status(503).json({ 
-          error: "OpenAI API key not configured. Please set OPENAI_API_KEY environment variable." 
+      let apiKey = process.env.GEMINI_API_KEY || '';
+      if (req.user) {
+        const userId = req.user.claims.sub;
+        const keys = await storage.getUserApiKeys(userId);
+        const userKey = keys.find((k: any) => k.provider === 'gemini' && k.isActive);
+        
+        if (userKey) {
+          apiKey = decryptApiKey(userKey.encryptedKey);
+        }
+      }
+
+      if (!apiKey) {
+        return res.status(400).json({ 
+          error: 'No Gemini API key found. Get a free key at https://makersuite.google.com/app/apikey' 
         });
       }
       
-      const systemPrompt = `You are a Solidity smart contract expert. Generate secure, well-documented smart contracts based on the user's requirements. Follow best practices and include comments.`;
-      
       let contractPrompt = "";
       if (template === "erc20") {
-        contractPrompt = `Create an ERC-20 token contract with name: ${parameters.tokenName}, symbol: ${parameters.tokenSymbol}, total supply: ${parameters.totalSupply}`;
+        contractPrompt = `You are a Solidity smart contract expert. Create a complete, secure ERC-20 token smart contract with the following details:
+- Token Name: ${parameters?.tokenName || 'MyToken'}
+- Token Symbol: ${parameters?.tokenSymbol || 'MTK'}
+- Total Supply: ${parameters?.totalSupply || '1000000'}
+
+Include proper licensing (MIT), OpenZeppelin imports, security features, and detailed comments. Return ONLY the Solidity code.`;
       } else if (template === "erc721") {
-        contractPrompt = `Create an ERC-721 NFT contract for ${name}`;
+        contractPrompt = `You are a Solidity smart contract expert. Create a complete, secure ERC-721 NFT smart contract for ${name || 'MyNFT'}. Include minting functionality, metadata URI support, OpenZeppelin imports, and security features. Return ONLY the Solidity code.`;
       } else {
-        contractPrompt = req.body.prompt || "Create a basic smart contract";
+        contractPrompt = `You are a Solidity smart contract expert. ${customPrompt || "Create a basic, secure smart contract with proper licensing and comments."}. Return ONLY the Solidity code.`;
       }
 
-      const response = await client.chat.completions.create({
-        model: "gpt-4o-mini",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: contractPrompt }
-        ],
+      const code = await aiProvider.generateWithAI({
+        provider: 'gemini',
+        model: 'gemini-1.5-flash',
+        prompt: contractPrompt,
+        apiKey,
+        maxTokens: 8192
       });
 
-      const code = response.choices[0].message.content;
       res.json({ code, template, name });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
   });
 
-  app.post("/api/web3/audit", async (req, res) => {
+  app.post("/api/web3/audit", async (req: any, res) => {
     try {
       const { code } = req.body;
 
-      const client = getOpenAI();
-      if (!client) {
-        return res.status(503).json({ 
-          error: "OpenAI API key not configured. Please set OPENAI_API_KEY environment variable." 
+      let apiKey = process.env.GEMINI_API_KEY || '';
+      if (req.user) {
+        const userId = req.user.claims.sub;
+        const keys = await storage.getUserApiKeys(userId);
+        const userKey = keys.find((k: any) => k.provider === 'gemini' && k.isActive);
+        
+        if (userKey) {
+          apiKey = decryptApiKey(userKey.encryptedKey);
+        }
+      }
+
+      if (!apiKey) {
+        return res.status(400).json({ 
+          error: 'No Gemini API key found. Get a free key at https://makersuite.google.com/app/apikey' 
         });
       }
 
-      const auditPrompt = `Analyze this Solidity smart contract for security vulnerabilities, gas optimization issues, and best practice violations:\n\n${code}`;
+      const auditPrompt = `You are a smart contract security auditor. Analyze this Solidity smart contract for:
+1. Security vulnerabilities (reentrancy, overflow, access control, etc.)
+2. Gas optimization opportunities
+3. Best practice violations
+4. Code quality issues
 
-      const response = await client.chat.completions.create({
-        model: "gpt-4o-mini",
-        messages: [
-          { role: "system", content: "You are a smart contract security auditor. Provide detailed security analysis." },
-          { role: "user", content: auditPrompt }
-        ],
+Smart Contract Code:
+${code}
+
+Provide a detailed security audit report with severity levels (Critical, High, Medium, Low) for each finding.`;
+
+      const audit = await aiProvider.generateWithAI({
+        provider: 'gemini',
+        model: 'gemini-1.5-flash',
+        prompt: auditPrompt,
+        apiKey,
+        maxTokens: 8192
       });
 
-      const audit = response.choices[0].message.content;
       res.json({ audit });
     } catch (error: any) {
       res.status(500).json({ error: error.message });

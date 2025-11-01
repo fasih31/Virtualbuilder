@@ -69,8 +69,7 @@ Generate complete, working code with all imports and dependencies that can be de
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           prompt: prompt,
-          language: selectedPlatform?.language || "javascript",
-          provider: "openai"
+          language: selectedPlatform?.language || "javascript"
         }),
       });
       

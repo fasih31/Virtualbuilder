@@ -14,7 +14,7 @@ export default function WebsiteStudio() {
   const { toast } = useToast();
   const [prompt, setPrompt] = useState("");
   const [generatedCode, setGeneratedCode] = useState("");
-  const [provider, setProvider] = useState("openai");
+  
   const [showPreview, setShowPreview] = useState(true);
 
   const generateMutation = useMutation({
@@ -27,8 +27,7 @@ export default function WebsiteStudio() {
 Make it modern, responsive, and beautiful. Include all necessary HTML structure, CSS styling in a <style> tag, 
 and JavaScript in a <script> tag. Make sure it's a complete, working page. Use modern CSS features like flexbox, grid, and animations.
 Ensure the page is fully functional and interactive.`,
-          language: "html",
-          provider: provider
+          language: "html"
         }),
       });
 
@@ -101,20 +100,7 @@ Ensure the page is fully functional and interactive.`,
         <div className="grid lg:grid-cols-2 gap-6">
           {/* Generator */}
           <Card className="p-6">
-            <div className="mb-4">
-              <Label className="mb-2 block">AI Provider</Label>
-              <Select value={provider} onValueChange={setProvider}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="openai">OpenAI</SelectItem>
-                  <SelectItem value="anthropic">Anthropic</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <Label className="mb-2 block">Describe Your Website</Label>
+            <Label className="mb-2 block">Describe Your Website (Using Free Gemini AI)</Label>
             <Textarea
               placeholder="Example: Build a modern portfolio website with a hero section, animated gradient background, projects gallery with cards, skills section with icons, and a contact form. Use a dark theme with accent colors."
               value={prompt}
@@ -188,7 +174,7 @@ Ensure the page is fully functional and interactive.`,
               <div className="text-center py-20 text-muted-foreground border rounded-lg" style={{ height: '600px' }}>
                 <Sparkles className="w-12 h-12 mx-auto mb-4 opacity-50" />
                 <p>Generate a website to see the code and preview</p>
-                <p className="text-sm mt-2">Using {provider}</p>
+                <p className="text-sm mt-2">Using Free Google Gemini</p>
               </div>
             )}
           </Card>

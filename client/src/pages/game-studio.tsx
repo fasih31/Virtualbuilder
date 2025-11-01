@@ -13,7 +13,7 @@ export default function GameStudio() {
   const { toast } = useToast();
   const [prompt, setPrompt] = useState("");
   const [gameCode, setGameCode] = useState("");
-  const [provider, setProvider] = useState("openai");
+  
   const [showCode, setShowCode] = useState(false);
 
   const generateMutation = useMutation({
@@ -33,8 +33,7 @@ Include all HTML, CSS, and JavaScript in one complete file. The game must be:
 - Have sound effects (optional, using Web Audio API)
 - Include a restart/replay button
 Make it fun, polished, visually appealing, and ready to play immediately.`,
-          language: "html",
-          provider: provider
+          language: "html"
         }),
       });
 
@@ -106,20 +105,7 @@ Make it fun, polished, visually appealing, and ready to play immediately.`,
 
         <div className="grid lg:grid-cols-2 gap-6">
           <Card className="p-6">
-            <div className="mb-4">
-              <Label className="mb-2 block">AI Provider</Label>
-              <Select value={provider} onValueChange={setProvider}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="openai">OpenAI</SelectItem>
-                  <SelectItem value="anthropic">Anthropic</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <Label className="mb-2 block">Describe Your Game</Label>
+            <Label className="mb-2 block">Describe Your Game (Using Free Gemini AI)</Label>
             <Textarea
               placeholder="Example: Build a 2D platformer where the player controls a character that can jump over obstacles and collect coins. Add enemies that move back and forth. Include a score counter and game over screen. Use arrow keys for movement."
               value={prompt}
@@ -190,7 +176,7 @@ Make it fun, polished, visually appealing, and ready to play immediately.`,
               <div className="text-center py-20 text-muted-foreground border rounded-lg" style={{ height: '600px' }}>
                 <Play className="w-12 h-12 mx-auto mb-4 opacity-50" />
                 <p>Generate a game to play it here</p>
-                <p className="text-sm mt-2">Using {provider}</p>
+                <p className="text-sm mt-2">Using Free Google Gemini</p>
               </div>
             )}
           </Card>
