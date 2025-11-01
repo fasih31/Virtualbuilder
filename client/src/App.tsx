@@ -6,6 +6,7 @@ import { Suspense, lazy } from "react";
 import { Loader2 } from "lucide-react";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import VirtuCopilot from "@/components/VirtuCopilot";
+import { ThemeProvider } from "@/components/ThemeProvider";
 
 // Lazy load pages for better performance
 const Home = lazy(() => import("./pages/home"));
@@ -58,15 +59,15 @@ function Router() {
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <div className="dark">
+      <ThemeProvider defaultTheme="dark" storageKey="virtubuild-theme">
+        <TooltipProvider>
           <Suspense fallback={<LoadingFallback />}>
-            <Router /> {/* Router component now uses lazy-loaded components */}
+            <Router />
           </Suspense>
           <VirtuCopilot />
-        </div>
-        <Toaster />
-      </TooltipProvider>
+          <Toaster />
+        </TooltipProvider>
+      </ThemeProvider>
     </QueryClientProvider>
   );
 }

@@ -51,15 +51,18 @@ Commands to implement:
 ${commandsList}
 
 Requirements:
-- Use ${selectedPlatform?.language === 'javascript' ? 'discord.js library' : 'python-telegram-bot library'}
-- Include proper error handling
-- Add event listeners for messages
-- Implement all the specified commands
-- Include setup instructions in comments
-- Make it production-ready
-- Add bot token placeholder: BOT_TOKEN_HERE
+- Use ${selectedPlatform?.language === 'javascript' ? 'discord.js v14 library' : 'python-telegram-bot library'}
+- Include proper error handling and logging
+- Add event listeners for messages and interactions
+- Implement all the specified commands with proper response handling
+- Include detailed setup instructions in comments at the top
+- Make it production-ready with best practices
+- Add environment variable placeholder: BOT_TOKEN (use process.env.BOT_TOKEN for JS, os.getenv for Python)
+- Include example .env file content in comments
+- Add connection status logging
+- Implement graceful shutdown handling
 
-Generate complete, working code that can be deployed immediately.`;
+Generate complete, working code with all imports and dependencies that can be deployed immediately.`;
       
       const response = await fetch("/api/generate/code", {
         method: "POST",

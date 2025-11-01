@@ -25,7 +25,8 @@ export default function WebsiteStudio() {
         body: JSON.stringify({
           prompt: `Create a complete, working HTML page with embedded CSS and JavaScript for: ${userPrompt}. 
 Make it modern, responsive, and beautiful. Include all necessary HTML structure, CSS styling in a <style> tag, 
-and JavaScript in a <script> tag. Make sure it's a complete, working page.`,
+and JavaScript in a <script> tag. Make sure it's a complete, working page. Use modern CSS features like flexbox, grid, and animations.
+Ensure the page is fully functional and interactive.`,
           language: "html",
           provider: provider
         }),
@@ -39,20 +40,27 @@ and JavaScript in a <script> tag. Make sure it's a complete, working page.`,
       return response.json();
     },
     onSuccess: (data) => {
-      // Extract code from markdown if needed
       let code = data.code;
       if (code.includes("```html")) {
         code = code.split("```html")[1].split("```")[0].trim();
       } else if (code.includes("```")) {
         code = code.split("```")[1].split("```")[0].trim();
       }
+      
+      if (!code.includes("<!DOCTYPE html>") && !code.includes("<html")) {
+        code = `<!DOCTYPE html>\n<html lang="en">\n<head>\n<meta charset="UTF-8">\n<meta name="viewport" content="width=device-width, initial-scale=1.0">\n<title>Generated Website</title>\n</head>\n<body>\n${code}\n</body>\n</html>`;
+      }
+      
       setGeneratedCode(code);
-      toast({ title: "Website generated!", description: "Your code is ready" });
+      toast({ 
+        title: "Website generated!", 
+        description: "Your website is ready. Check the preview!" 
+      });
     },
     onError: (error: any) => {
       toast({
-        title: "Error",
-        description: error.message,
+        title: "Generation Error",
+        description: error.message || "Failed to generate website. Please check your API keys in the settings.",
         variant: "destructive"
       });
     }

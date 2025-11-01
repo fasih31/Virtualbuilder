@@ -27,6 +27,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Plus, Search, Clock, Trash2, ExternalLink, LogOut, User, ShoppingBag, TrendingUp, Users, Zap, Activity } from "lucide-react";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { Link } from "wouter";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import type { Project } from "@shared/schema";
@@ -131,6 +132,8 @@ export default function Dashboard() {
                 Marketplace
               </Button>
             </Link>
+
+            <ThemeToggle />
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>

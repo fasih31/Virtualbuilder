@@ -2,6 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Link } from "wouter";
 import { Brain, Code, Gamepad2, MessageSquare, Rocket } from "lucide-react";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 const studios = [
   {
@@ -37,6 +38,19 @@ const studios = [
 export default function Home() {
   return (
     <div className="min-h-screen">
+      {/* Header */}
+      <header className="border-b p-4 sticky top-0 bg-background/80 backdrop-blur-sm z-50">
+        <div className="max-w-7xl mx-auto flex items-center justify-between">
+          <h1 className="text-2xl font-bold gradient-text">VirtuBuild.ai</h1>
+          <div className="flex items-center gap-4">
+            <ThemeToggle />
+            <Link href="/dashboard">
+              <Button variant="outline">Dashboard</Button>
+            </Link>
+          </div>
+        </div>
+      </header>
+
       {/* Hero */}
       <section className="py-20 px-6 text-center">
         <h1 className="text-5xl font-bold gradient-text mb-6">

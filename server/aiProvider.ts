@@ -55,7 +55,7 @@ export class AIProviderService {
   private getOpenAIClient(apiKey?: string): OpenAI | null {
     const key = apiKey || process.env.OPENAI_API_KEY;
     if (!key) return null;
-    
+
     if (!this.openaiClients.has(key)) {
       this.openaiClients.set(key, new OpenAI({ apiKey: key }));
     }
@@ -65,7 +65,7 @@ export class AIProviderService {
   private getAnthropicClient(apiKey?: string): Anthropic | null {
     const key = apiKey || process.env.ANTHROPIC_API_KEY;
     if (!key) return null;
-    
+
     if (!this.anthropicClients.has(key)) {
       this.anthropicClients.set(key, new Anthropic({ apiKey: key }));
     }
@@ -75,7 +75,7 @@ export class AIProviderService {
   private getGeminiClient(apiKey?: string): GoogleGenerativeAI | null {
     const key = apiKey || process.env.GEMINI_API_KEY;
     if (!key) return null;
-    
+
     if (!this.geminiClients.has(key)) {
       this.geminiClients.set(key, new GoogleGenerativeAI(key));
     }
@@ -208,7 +208,7 @@ export class AIProviderService {
     apiKey?: string
   ): Promise<AIGenerationResult> {
     const systemPrompt = `You are an expert code generator. Generate clean, well-documented ${language} code based on the user's requirements. Only return the code, no explanations.`;
-    
+
     const messages: AIMessage[] = [
       { role: 'system', content: systemPrompt },
       { role: 'user', content: prompt },

@@ -56,11 +56,15 @@ export default function AIStudio() {
         { role: "assistant", content: data.response }
       ]);
       setPrompt("");
+      toast({ 
+        title: "Response generated", 
+        description: "AI has responded to your query"
+      });
     },
     onError: (error: any) => {
       toast({
         title: "Error",
-        description: error.message,
+        description: error.message || "Failed to get AI response. Please check your API keys.",
         variant: "destructive"
       });
     }

@@ -24,13 +24,15 @@ export default function GameStudio() {
         body: JSON.stringify({
           prompt: `Create a complete, playable HTML5 game using Canvas API for: ${userPrompt}. 
 Include all HTML, CSS, and JavaScript in one complete file. The game must be:
-- Fully playable and interactive
-- Use HTML5 Canvas for rendering
-- Include game controls (keyboard/mouse)
-- Have clear win/lose conditions or scoring
-- Include instructions on how to play
+- Fully playable and interactive with smooth animations
+- Use HTML5 Canvas for rendering with requestAnimationFrame
+- Include game controls (keyboard/mouse) with clear instructions
+- Have clear win/lose conditions or scoring system
+- Include start screen, gameplay, and game over states
 - Be responsive and work on different screen sizes
-Make it fun, polished, and ready to play immediately.`,
+- Have sound effects (optional, using Web Audio API)
+- Include a restart/replay button
+Make it fun, polished, visually appealing, and ready to play immediately.`,
           language: "html",
           provider: provider
         }),
@@ -44,20 +46,27 @@ Make it fun, polished, and ready to play immediately.`,
       return response.json();
     },
     onSuccess: (data) => {
-      // Extract code from markdown if needed
       let code = data.code;
       if (code.includes("```html")) {
         code = code.split("```html")[1].split("```")[0].trim();
       } else if (code.includes("```")) {
         code = code.split("```")[1].split("```")[0].trim();
       }
+      
+      if (!code.includes("<!DOCTYPE html>") && !code.includes("<html")) {
+        code = `<!DOCTYPE html>\n<html lang="en">\n<head>\n<meta charset="UTF-8">\n<meta name="viewport" content="width=device-width, initial-scale=1.0">\n<title>Generated Game</title>\n</head>\n<body>\n${code}\n</body>\n</html>`;
+      }
+      
       setGameCode(code);
-      toast({ title: "Game generated!", description: "Your game is ready to play" });
+      toast({ 
+        title: "Game generated!", 
+        description: "Your game is ready! Click preview to play." 
+      });
     },
     onError: (error: any) => {
       toast({
-        title: "Error",
-        description: error.message,
+        title: "Generation Error",
+        description: error.message || "Failed to generate game. Please check your API keys.",
         variant: "destructive"
       });
     }
