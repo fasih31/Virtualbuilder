@@ -35,12 +35,18 @@ export default function BotStudio() {
   const [botToken, setBotToken] = useState("");
   const [commands, setCommands] = useState([{ trigger: "!help", response: "Available commands..." }]);
 
+  const [botCode, setBotCode] = useState("");
+
   const createBot = useMutation({
     mutationFn: async (data: any) => {
-      const prompt = `Create a ${platform} bot with the following features:
-        - Template: ${template}
-        - Commands: ${JSON.stringify(commands)}
-        Generate complete bot code with proper error handling and platform integration.`;
+      const prompt = `Create a fully functional ${platform} bot with:
+- Template: ${template}
+- Commands: ${JSON.stringify(commands)}
+- Proper error handling
+- Platform API integration
+- Event listeners
+- Ready-to-deploy code
+Language: ${platform === "discord" ? "JavaScript (discord.js)" : "Python"}`;
       
       const response = await fetch("/api/generate/code", {
         method: "POST",
@@ -55,6 +61,9 @@ export default function BotStudio() {
       return response.json();
     },
     onSuccess: (data) => {
+      if (data.code) {
+        setBotCode(data.code);
+      }
       toast({ 
         title: "Bot Created!", 
         description: "Your bot code is ready! Download and deploy it." 
@@ -193,15 +202,37 @@ export default function BotStudio() {
                       commands,
                     })
                   }
-                  disabled={!projectName || !botToken}
+                  disabled={!projectName || !botToken || createBot.isPending}
                 >
                   <Play className="w-4 h-4 mr-2" />
-                  Deploy Bot
+                  {createBot.isPending ? "Generating..." : "Generate Bot Code"}
                 </Button>
-                <Button variant="outline" className="w-full">
-                  <Download className="w-4 h-4 mr-2" />
-                  Export Code
-                </Button>
+                
+                {botCode && (
+                  <>
+                    <Card className="p-4">
+                      <h4 className="font-semibold mb-2">Generated Bot Code</h4>
+                      <pre className="bg-slate-950 p-4 rounded text-green-400 text-sm overflow-x-auto max-h-96">
+                        <code>{botCode}</code>
+                      </pre>
+                    </Card>
+                    <Button 
+                      variant="outline" 
+                      className="w-full"
+                      onClick={() => {
+                        const blob = new Blob([botCode], { type: 'text/plain' });
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = `${projectName}-bot.${platform === 'discord' ? 'js' : 'py'}`;
+                        a.click();
+                      }}
+                    >
+                      <Download className="w-4 h-4 mr-2" />
+                      Download Bot Code
+                    </Button>
+                  </>
+                )}
               </TabsContent>
             </Tabs>
           </Card>

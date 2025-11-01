@@ -67,7 +67,26 @@ export default function WebsiteStudio() {
 
   const generateSite = useMutation({
     mutationFn: async (data: any) => {
-      const prompt = data.prompt || `Create a ${template} website with modern design, responsive layout, and clean code. Include HTML, CSS, and JavaScript.`;
+      const prompt = data.prompt || `Create a complete ${template} website with:
+- Modern, responsive design
+- Beautiful CSS styling with gradients
+- Interactive JavaScript functionality
+- Semantic HTML structure
+Return ONLY the code in this exact format:
+<!-- HTML -->
+<body>
+...body content...
+</body>
+
+<!-- CSS -->
+<style>
+...css styles...
+</style>
+
+<!-- JS -->
+<script>
+...javascript code...
+</script>`;
       
       const response = await fetch("/api/generate/code", {
         method: "POST",
@@ -83,14 +102,31 @@ export default function WebsiteStudio() {
     },
     onSuccess: (data) => {
       if (data.code) {
-        // Parse generated code into HTML, CSS, JS
-        const htmlMatch = data.code.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
-        const cssMatch = data.code.match(/<style[^>]*>([\s\S]*?)<\/style>/i);
-        const jsMatch = data.code.match(/<script[^>]*>([\s\S]*?)<\/script>/i);
+        // Parse the structured response
+        const htmlMatch = data.code.match(/<!-- HTML -->\s*<body[^>]*>([\s\S]*?)<\/body>/i);
+        const cssMatch = data.code.match(/<!-- CSS -->\s*<style[^>]*>([\s\S]*?)<\/style>/i);
+        const jsMatch = data.code.match(/<!-- JS -->\s*<script[^>]*>([\s\S]*?)<\/script>/i);
         
-        if (htmlMatch) setHtmlCode(htmlMatch[1].trim());
-        if (cssMatch) setCssCode(cssMatch[1].trim());
-        if (jsMatch) setJsCode(jsMatch[1].trim());
+        if (htmlMatch) {
+          setHtmlCode(htmlMatch[1].trim());
+        }
+        if (cssMatch) {
+          setCssCode(cssMatch[1].trim());
+        }
+        if (jsMatch) {
+          setJsCode(jsMatch[1].trim());
+        }
+        
+        // Fallback: if structured format not found, try basic parsing
+        if (!htmlMatch && !cssMatch && !jsMatch) {
+          const basicHtml = data.code.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
+          const basicCss = data.code.match(/<style[^>]*>([\s\S]*?)<\/style>/i);
+          const basicJs = data.code.match(/<script[^>]*>([\s\S]*?)<\/script>/i);
+          
+          if (basicHtml) setHtmlCode(basicHtml[1].trim());
+          if (basicCss) setCssCode(basicCss[1].trim());
+          if (basicJs) setJsCode(basicJs[1].trim());
+        }
       }
       toast({ title: "Website Generated!", description: "Your site is ready to customize." });
     },

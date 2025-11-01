@@ -31,6 +31,8 @@ export default function GameStudio() {
   const [template, setTemplate] = useState("");
   const [aiPrompt, setAiPrompt] = useState("");
 
+  const [gameCode, setGameCode] = useState("");
+
   const generateGame = useMutation({
     mutationFn: async (data: any) => {
       const prompt = data.prompt || "Create a simple browser-based game with HTML5 Canvas and JavaScript";
@@ -39,7 +41,13 @@ export default function GameStudio() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          prompt: `${prompt}. Use ${engine} framework. Include complete game logic, rendering, and controls.`,
+          prompt: `${prompt}. Use ${engine} framework. Include:
+- Complete game logic with player movement
+- Rendering system
+- Keyboard/mouse controls
+- Score tracking
+- Game loop
+Return fully functional, runnable code.`,
           language: engine === "kaboom" ? "javascript" : "python",
           provider: "gemini"
         }),
@@ -48,6 +56,9 @@ export default function GameStudio() {
       return response.json();
     },
     onSuccess: (data) => {
+      if (data.code) {
+        setGameCode(data.code);
+      }
       toast({ 
         title: "Game Generated!", 
         description: "Your game code is ready! Check the code editor." 
@@ -140,17 +151,40 @@ export default function GameStudio() {
                 <p className="text-muted-foreground">Level designer and sprite editor coming soon...</p>
               </TabsContent>
 
-              <TabsContent value="play" className="mt-6">
-                <Card className="h-96 flex items-center justify-center bg-black">
-                  <div className="text-center">
-                    <Gamepad2 className="w-16 h-16 mx-auto mb-4 text-primary" />
-                    <p className="text-muted-foreground">Game preview will appear here</p>
-                    <Button className="mt-4">
-                      <Play className="w-4 h-4 mr-2" />
-                      Play Game
-                    </Button>
-                  </div>
-                </Card>
+              <TabsContent value="play" className="mt-6 space-y-4">
+                {gameCode ? (
+                  <>
+                    <Card className="p-4">
+                      <h4 className="font-semibold mb-2">Generated Game Code</h4>
+                      <pre className="bg-slate-950 p-4 rounded text-green-400 text-sm overflow-x-auto max-h-96">
+                        <code>{gameCode}</code>
+                      </pre>
+                    </Card>
+                    <Card className="h-96 flex items-center justify-center bg-black">
+                      <iframe
+                        srcDoc={`<!DOCTYPE html>
+<html>
+<head>
+  <style>body { margin: 0; padding: 0; display: flex; justify-content: center; align-items: center; height: 100vh; background: #000; }</style>
+</head>
+<body>
+  <script>${gameCode}</script>
+</body>
+</html>`}
+                        className="w-full h-full border-0"
+                        title="Game Preview"
+                        sandbox="allow-scripts"
+                      />
+                    </Card>
+                  </>
+                ) : (
+                  <Card className="h-96 flex items-center justify-center bg-black">
+                    <div className="text-center">
+                      <Gamepad2 className="w-16 h-16 mx-auto mb-4 text-primary" />
+                      <p className="text-muted-foreground">Generate a game to see it here</p>
+                    </div>
+                  </Card>
+                )}
               </TabsContent>
             </Tabs>
           </Card>
