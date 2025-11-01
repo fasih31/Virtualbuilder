@@ -26,12 +26,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, Search, Clock, Trash2, ExternalLink, LogOut, User, ShoppingBag } from "lucide-react";
+import { Plus, Search, Clock, Trash2, ExternalLink, LogOut, User, ShoppingBag, TrendingUp, Users, Zap, Activity } from "lucide-react";
 import { Link } from "wouter";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import type { Project } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
+import { Progress } from "@/components/ui/progress";
 
 const projectTypes = [
   { value: "ai", label: "AI Studio" },
@@ -122,7 +123,7 @@ export default function Dashboard() {
           <Link href="/">
             <h1 className="text-2xl font-bold gradient-text cursor-pointer" data-testid="link-home">VirtuBuild.ai</h1>
           </Link>
-          
+
           <div className="flex items-center gap-4">
             <Link href="/marketplace">
               <Button variant="ghost" data-testid="link-marketplace-header">
@@ -130,7 +131,7 @@ export default function Dashboard() {
                 Marketplace
               </Button>
             </Link>
-            
+
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="gap-2" data-testid="button-user-menu">
@@ -164,7 +165,7 @@ export default function Dashboard() {
               <h2 className="text-4xl font-bold gradient-text mb-2">My Projects</h2>
               <p className="text-muted-foreground">Manage and deploy your creations</p>
             </div>
-          
+
           <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
             <DialogTrigger asChild>
               <Button size="lg" data-testid="button-create-project">
@@ -240,6 +241,46 @@ export default function Dashboard() {
           </Select>
         </div>
 
+        {/* Analytics Overview */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+          <Card className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Total Projects</p>
+                <p className="text-2xl font-bold">{projects?.length || 0}</p>
+              </div>
+              <Activity className="w-8 h-8 text-primary opacity-50" />
+            </div>
+          </Card>
+          <Card className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Deployments</p>
+                <p className="text-2xl font-bold">12</p>
+              </div>
+              <Zap className="w-8 h-8 text-green-500 opacity-50" />
+            </div>
+          </Card>
+          <Card className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Views</p>
+                <p className="text-2xl font-bold">3.2K</p>
+              </div>
+              <Users className="w-8 h-8 text-blue-500 opacity-50" />
+            </div>
+          </Card>
+          <Card className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Growth</p>
+                <p className="text-2xl font-bold">+24%</p>
+              </div>
+              <TrendingUp className="w-8 h-8 text-orange-500 opacity-50" />
+            </div>
+          </Card>
+        </div>
+
         {isLoading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {[1, 2, 3].map((i) => (
@@ -271,15 +312,15 @@ export default function Dashboard() {
                     <Trash2 className="w-4 h-4" />
                   </Button>
                 </div>
-                
+
                 <h3 className="text-xl font-semibold mb-2" data-testid={`text-name-${project.id}`}>
                   {project.name}
                 </h3>
-                
+
                 {project.description && (
                   <p className="text-sm text-muted-foreground mb-4">{project.description}</p>
                 )}
-                
+
                 <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
                   <Clock className="w-4 h-4" />
                   <span>{new Date(project.updatedAt).toLocaleDateString()}</span>

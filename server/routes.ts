@@ -5,7 +5,7 @@ import { insertProjectSchema, insertMarketplaceItemSchema, insertConversationSch
 import { setupAuth, isAuthenticated } from "./replitAuth";
 import OpenAI from "openai";
 import Anthropic from "@anthropic-ai/sdk";
-import { GoogleGenerativeAI } from "@google/genai";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
@@ -237,6 +237,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/generate/code", async (req, res) => {
     try {
       const { prompt, language = "javascript", provider = "openai" } = req.body;
+
+
+  // Web3 Contract Generation
+  app.post("/api/web3/create", isAuthenticated, async (req, res) => {
+    try {
+      const { template, name, parameters } = req.body;
+      
+      const systemPrompt = `You are a Solidity smart contract expert. Generate secure, well-documented smart contracts based on the user's requirements. Follow best practices and include comments.`;
+      
+      let contractPrompt = "";
+      if (template === "erc20") {
+        contractPrompt = `Create an ERC-20 token contract with name: ${parameters.tokenName}, symbol: ${parameters.tokenSymbol}, total supply: ${parameters.totalSupply}`;
+      } else if (template === "erc721") {
+        contractPrompt = `Create an ERC-721 NFT contract for ${name}`;
+      } else {
+        contractPrompt = req.body.prompt || "Create a basic smart contract";
+      }
+
+      const response = await openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: contractPrompt }
+        ],
+      });
+
+      const code = response.choices[0].message.content;
+      res.json({ code, template, name });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/web3/audit", async (req, res) => {
+    try {
+      const { code } = req.body;
+
+      const auditPrompt = `Analyze this Solidity smart contract for security vulnerabilities, gas optimization issues, and best practice violations:\n\n${code}`;
+
+      const response = await openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: [
+          { role: "system", content: "You are a smart contract security auditor. Provide detailed security analysis." },
+          { role: "user", content: auditPrompt }
+        ],
+      });
+
+      const audit = response.choices[0].message.content;
+      res.json({ audit });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
 
       const systemPrompt = `You are an expert code generator. Generate clean, well-documented ${language} code based on the user's requirements. Only return the code, no explanations.`;
       const messages = [

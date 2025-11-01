@@ -12,6 +12,7 @@ import AIStudio from "@/pages/ai-studio";
 import WebsiteStudio from "@/pages/website-studio";
 import BotStudio from "@/pages/bot-studio";
 import GameStudio from "@/pages/game-studio";
+import Web3Studio from "@/pages/web3-studio";
 import { VirtuCopilot } from "@/components/VirtuCopilot";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -47,6 +48,7 @@ function Router() {
           <Route path="/website-studio" component={WebsiteStudio} />
           <Route path="/bot-studio" component={BotStudio} />
           <Route path="/game-studio" component={GameStudio} />
+          <Route path="/web3-studio" component={Web3Studio} />
           <Route component={NotFound} />
         </>
       )}

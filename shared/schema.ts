@@ -97,6 +97,30 @@ export const insertConversationSchema = createInsertSchema(conversations).omit({
 // Types
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
+
+
+export const insertTeamSchema = z.object({
+  name: z.string().min(1),
+  ownerId: z.string(),
+  members: z.array(z.string()).default([]),
+  createdAt: z.date().default(() => new Date()),
+});
+
+export const insertCollaborationSchema = z.object({
+  projectId: z.string(),
+  userId: z.string(),
+  role: z.enum(["owner", "editor", "viewer"]).default("viewer"),
+  invitedAt: z.date().default(() => new Date()),
+});
+
+export const insertAnalyticsEventSchema = z.object({
+  userId: z.string(),
+  eventType: z.string(),
+  projectId: z.string().optional(),
+  metadata: z.record(z.any()).optional(),
+  timestamp: z.date().default(() => new Date()),
+});
+
 export type InsertProject = z.infer<typeof insertProjectSchema>;
 export type Project = typeof projects.$inferSelect;
 export type InsertMarketplaceItem = z.infer<typeof insertMarketplaceItemSchema>;

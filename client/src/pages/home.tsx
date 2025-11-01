@@ -1,7 +1,7 @@
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Brain, Globe, MessageSquare, Gamepad2, Coins, Sparkles, Zap, Users } from "lucide-react";
+import { Brain, Globe, MessageSquare, Gamepad2, Coins, Sparkles, Zap, Users, Link2 } from "lucide-react";
 
 const studios = [
   {
@@ -68,34 +68,34 @@ export default function Home() {
       <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-primary/20 via-background to-secondary/20"></div>
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(108,99,255,0.1),transparent_50%)]"></div>
-        
+
         <div className="relative z-10 max-w-7xl mx-auto px-6 py-24 text-center">
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 mb-8">
             <Sparkles className="w-4 h-4 text-primary" />
             <span className="text-sm font-medium text-primary">The Future of AI Development</span>
           </div>
-          
+
           <h1 className="text-5xl md:text-7xl font-bold mb-6 gradient-text">
             Build Anything with AI
           </h1>
-          
+
           <p className="text-xl md:text-2xl text-muted-foreground mb-12 max-w-3xl mx-auto">
             VirtuBuild.ai is your complete AI creation studio. Build apps, websites, bots, games, and Web3 projects with instant deployment.
           </p>
-          
+
           <div className="flex flex-wrap justify-center gap-4 mb-20">
-            <Button 
-              size="lg" 
-              className="text-lg px-8 h-12" 
+            <Button
+              size="lg"
+              className="text-lg px-8 h-12"
               data-testid="button-get-started"
               onClick={() => window.location.href = '/api/login'}
             >
               Get Started Free
             </Button>
-            <Button 
-              size="lg" 
-              variant="outline" 
-              className="text-lg px-8 h-12" 
+            <Button
+              size="lg"
+              variant="outline"
+              className="text-lg px-8 h-12"
               data-testid="button-learn-more"
               onClick={() => window.scrollBy({ top: 400, behavior: 'smooth' })}
             >
