@@ -38,6 +38,16 @@ function getGemini() {
 
 export async function registerRoutes(app: Express): Promise<Server> {
   
+  // Health check endpoint for deployment monitoring
+  app.get('/api/health', (req, res) => {
+    res.json({ 
+      status: 'ok', 
+      timestamp: new Date().toISOString(),
+      uptime: process.uptime(),
+      environment: process.env.NODE_ENV || 'development'
+    });
+  });
+  
   // Setup authentication
   await setupAuth(app);
 

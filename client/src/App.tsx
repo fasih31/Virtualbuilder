@@ -18,8 +18,9 @@ const WebsiteStudio = lazy(() => import("./pages/website-studio"));
 const BotStudio = lazy(() => import("./pages/bot-studio"));
 const GameStudio = lazy(() => import("./pages/game-studio"));
 const Web3Studio = lazy(() => import("./pages/web3-studio"));
-const NotFound = lazy(() => import("./pages/not-found")); // Assuming NotFound is also lazy-loaded
-const EnhancedDashboard = lazy(() => import("./pages/enhanced-dashboard")); // New page
+const Settings = lazy(() => import("./pages/settings"));
+const NotFound = lazy(() => import("./pages/not-found"));
+const EnhancedDashboard = lazy(() => import("./pages/enhanced-dashboard"));
 
 // Loading fallback
 const LoadingFallback = () => (
@@ -50,7 +51,8 @@ function Router() {
       <Route path="/bot-studio" component={BotStudio} />
       <Route path="/game-studio" component={GameStudio} />
       <Route path="/web3-studio" component={Web3Studio} />
-      <Route path="/analytics" component={EnhancedDashboard} /> {/* New route */}
+      <Route path="/settings" component={Settings} />
+      <Route path="/analytics" component={EnhancedDashboard} />
       <Route component={NotFound} />
     </Switch>
   );

@@ -151,6 +151,12 @@ export default function Dashboard() {
                   {(user as any)?.email || "Account"}
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
+                <Link href="/settings">
+                  <DropdownMenuItem>
+                    <User className="w-4 h-4 mr-2" />
+                    Settings
+                  </DropdownMenuItem>
+                </Link>
                 <DropdownMenuItem onClick={() => window.location.href = "/api/logout"} data-testid="button-logout">
                   <LogOut className="w-4 h-4 mr-2" />
                   Log Out

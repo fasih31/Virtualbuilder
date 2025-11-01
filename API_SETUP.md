@@ -1,9 +1,16 @@
+# API Setup Guide
 
-# API Setup Guide for VirtuBuild.ai
+VirtuBuild.ai requires API keys from AI providers to function. You need at least ONE of the following:
 
-## Required API Keys
+## Quick Start
 
-To use all features of VirtuBuild.ai, you need to configure API keys for AI providers:
+1. Get API keys from your preferred AI provider(s)
+2. Add them to Replit Secrets (lock icon in sidebar)
+3. Restart the application
+
+## Supported AI Providers
+
+VirtuBuild.ai works with multiple AI providers. Configure at least one:
 
 ### 1. OpenAI (Required for AI Studio, Website Builder, Game Studio, Bot Studio)
 - Get your API key from: https://platform.openai.com/api-keys

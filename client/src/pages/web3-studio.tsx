@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Link2, Shield, Sparkles, Code, Rocket, Wallet } from "lucide-react";
+import { Link2, Shield, Sparkles, Code, Rocket, Wallet, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 const contractTemplates = [
@@ -37,17 +37,30 @@ export default function Web3Studio() {
   const [totalSupply, setTotalSupply] = useState("");
   const [aiPrompt, setAiPrompt] = useState("");
 
+  const [generatedCode, setGeneratedCode] = useState("");
+  const [auditResults, setAuditResults] = useState("");
+
   const createContract = useMutation({
     mutationFn: async (data: any) => {
       const response = await fetch("/api/web3/create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
+        body: JSON.stringify({
+          template: selectedTemplate,
+          name: projectName,
+          parameters: {
+            tokenName,
+            tokenSymbol,
+            totalSupply,
+          },
+          prompt: aiPrompt || `Create a ${selectedTemplate} smart contract`,
+        }),
       });
       if (!response.ok) throw new Error("Failed to create contract");
       return response.json();
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      setGeneratedCode(data.code);
       toast({ title: "Smart Contract Created!", description: "Ready to deploy on blockchain." });
     },
   });
@@ -61,7 +74,23 @@ export default function Web3Studio() {
       });
       return response.json();
     },
+    onSuccess: (data) => {
+      setAuditResults(data.audit);
+      toast({ title: "Security Audit Complete!", description: "Check the results below." });
+    },
   });
+
+  const handleGenerateContract = () => {
+    createContract.mutate({});
+  };
+
+  const handleAudit = () => {
+    if (!generatedCode) {
+      toast({ title: "No Contract", description: "Generate a contract first", variant: "destructive" });
+      return;
+    }
+    auditContract.mutate(generatedCode);
+  };
 
   return (
     <div className="min-h-screen p-6">
@@ -120,9 +149,13 @@ export default function Web3Studio() {
                     onChange={(e) => setAiPrompt(e.target.value)}
                     className="mt-2"
                   />
-                  <Button className="mt-2" disabled={!aiPrompt}>
-                    <Sparkles className="w-4 h-4 mr-2" />
-                    Generate Contract
+                  <Button 
+                    className="mt-2" 
+                    onClick={handleGenerateContract}
+                    disabled={createContract.isPending || (!selectedTemplate && !aiPrompt)}
+                  >
+                    {createContract.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Sparkles className="w-4 h-4 mr-2" />}
+                    {createContract.isPending ? "Generating..." : "Generate Contract"}
                   </Button>
                 </div>
               </TabsContent>
@@ -178,22 +211,48 @@ export default function Web3Studio() {
                   <Shield className="w-5 h-5 text-primary" />
                   <p className="text-sm">AI will scan your contract for vulnerabilities</p>
                 </div>
-                <Button onClick={() => auditContract.mutate("")}>
+                <Button onClick={handleAudit} disabled={!generatedCode || auditContract.isPending}>
+                  {auditContract.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
                   Run Security Audit
                 </Button>
+                {auditResults && (
+                  <div className="mt-4 p-4 bg-muted rounded-lg">
+                    <h4 className="font-semibold mb-2">Audit Results:</h4>
+                    <pre className="text-sm whitespace-pre-wrap">{auditResults}</pre>
+                  </div>
+                )}
               </TabsContent>
 
               <TabsContent value="deploy" className="space-y-6 mt-6">
-                <div className="space-y-4">
-                  <Button className="w-full" size="lg">
-                    <Wallet className="w-4 h-4 mr-2" />
-                    Connect Wallet
-                  </Button>
-                  <Button className="w-full" variant="outline" size="lg">
-                    <Rocket className="w-4 h-4 mr-2" />
-                    Deploy to {networks.find(n => n.value === network)?.label}
-                  </Button>
-                </div>
+                {generatedCode ? (
+                  <div className="space-y-4">
+                    <div className="p-4 bg-muted rounded-lg">
+                      <h4 className="font-semibold mb-2">Generated Contract:</h4>
+                      <Textarea value={generatedCode} readOnly rows={15} className="font-mono text-xs" />
+                    </div>
+                    <Button className="w-full" size="lg" variant="outline" onClick={() => {
+                      navigator.clipboard.writeText(generatedCode);
+                      toast({ title: "Copied!", description: "Contract code copied to clipboard" });
+                    }}>
+                      <Code className="w-4 h-4 mr-2" />
+                      Copy Contract Code
+                    </Button>
+                    <div className="p-4 bg-blue-500/10 rounded-lg border border-blue-500/20">
+                      <h4 className="font-semibold mb-2 text-blue-500">Deployment Instructions:</h4>
+                      <ol className="list-decimal list-inside space-y-1 text-sm">
+                        <li>Install MetaMask wallet extension</li>
+                        <li>Get test ETH from {networks.find(n => n.value === network)?.label} faucet</li>
+                        <li>Use Remix IDE or Hardhat to deploy</li>
+                        <li>Connect wallet and deploy to {networks.find(n => n.value === network)?.label}</li>
+                      </ol>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center py-12 text-muted-foreground">
+                    <Rocket className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                    <p>Generate a contract first to see deployment options</p>
+                  </div>
+                )}
               </TabsContent>
             </Tabs>
           </Card>

@@ -32,6 +32,13 @@ const studios = [
     icon: MessageSquare,
     href: "/bot-studio",
     color: "from-orange-500 to-red-500"
+  },
+  {
+    title: "Web3 Studio",
+    description: "Create smart contracts & DApps",
+    icon: Code,
+    href: "/web3-studio",
+    color: "from-yellow-500 to-orange-500"
   }
 ];
 
@@ -71,7 +78,7 @@ export default function Home() {
       <section className="py-12 px-6">
         <div className="max-w-6xl mx-auto">
           <h2 className="text-3xl font-bold text-center mb-12">Choose Your Studio</h2>
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
             {studios.map((studio) => (
               <Link key={studio.href} href={studio.href}>
                 <Card className="p-6 hover:shadow-lg transition-all cursor-pointer group">
