@@ -99,27 +99,66 @@ export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
 
 
-export const insertTeamSchema = z.object({
-  name: z.string().min(1),
-  ownerId: z.string(),
-  members: z.array(z.string()).default([]),
-  createdAt: z.date().default(() => new Date()),
+// Teams & Collaboration
+export const teams = pgTable("teams", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(),
+  ownerId: varchar("owner_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  members: jsonb("members").notNull().default([]),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
-export const insertCollaborationSchema = z.object({
-  projectId: z.string(),
-  userId: z.string(),
-  role: z.enum(["owner", "editor", "viewer"]).default("viewer"),
-  invitedAt: z.date().default(() => new Date()),
+export const collaborations = pgTable("collaborations", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  projectId: varchar("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  role: text("role").notNull().default("viewer"), // owner, editor, viewer
+  invitedAt: timestamp("invited_at").notNull().defaultNow(),
 });
 
-export const insertAnalyticsEventSchema = z.object({
-  userId: z.string(),
-  eventType: z.string(),
-  projectId: z.string().optional(),
-  metadata: z.record(z.any()).optional(),
-  timestamp: z.date().default(() => new Date()),
+// Analytics
+export const analyticsEvents = pgTable("analytics_events", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  projectId: varchar("project_id").references(() => projects.id, { onDelete: "cascade" }),
+  eventType: text("event_type").notNull(), // view, deploy, clone, edit, etc.
+  metadata: jsonb("metadata").default({}),
+  timestamp: timestamp("timestamp").notNull().defaultNow(),
 });
+
+// Deployments
+export const deployments = pgTable("deployments", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  projectId: varchar("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  status: text("status").notNull().default("pending"), // pending, building, deployed, failed
+  url: text("url"),
+  buildLog: text("build_log"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+// Ratings
+export const ratings = pgTable("ratings", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  marketplaceItemId: varchar("marketplace_item_id").notNull().references(() => marketplaceItems.id, { onDelete: "cascade" }),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  rating: integer("rating").notNull(), // 1-5 stars
+  review: text("review"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const insertTeamSchema = createInsertSchema(teams).omit({ id: true, createdAt: true });
+export const insertCollaborationSchema = createInsertSchema(collaborations).omit({ id: true, invitedAt: true });
+export const insertAnalyticsEventSchema = createInsertSchema(analyticsEvents).omit({ id: true, timestamp: true });
+export const insertDeploymentSchema = createInsertSchema(deployments).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertRatingSchema = createInsertSchema(ratings).omit({ id: true, createdAt: true });
+
+export type Team = typeof teams.$inferSelect;
+export type Collaboration = typeof collaborations.$inferSelect;
+export type AnalyticsEvent = typeof analyticsEvents.$inferSelect;
+export type Deployment = typeof deployments.$inferSelect;
+export type Rating = typeof ratings.$inferSelect;
 
 export type InsertProject = z.infer<typeof insertProjectSchema>;
 export type Project = typeof projects.$inferSelect;

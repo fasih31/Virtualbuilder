@@ -1,7 +1,7 @@
-import { 
-  type User, 
-  type UpsertUser, 
-  type Project, 
+import {
+  type User,
+  type UpsertUser,
+  type Project,
   type InsertProject,
   type MarketplaceItem,
   type InsertMarketplaceItem,
@@ -9,6 +9,19 @@ import {
   type InsertConversation
 } from "@shared/schema";
 import { randomUUID } from "crypto";
+
+import { db } from "./db";
+import {
+  users,
+  projects,
+  marketplaceItems,
+  conversations,
+  collaborations,
+  analyticsEvents,
+  deployments,
+  ratings
+} from "@shared/schema";
+import { eq, sql } from "drizzle-orm";
 
 export interface IStorage {
   // Users (Replit Auth)
@@ -37,6 +50,26 @@ export interface IStorage {
   getConversationsByProject(projectId: string): Promise<Conversation[]>;
   createConversation(conversation: InsertConversation): Promise<Conversation>;
   updateConversation(id: string, messages: any[], aiProvider?: string): Promise<Conversation | undefined>;
+
+  // Collaboration Methods
+  addCollaborator(data: any): Promise<any | undefined>;
+  getProjectCollaborators(projectId: string): Promise<any[]>;
+  removeCollaborator(id: string): Promise<boolean>;
+
+  // Analytics Methods
+  trackEvent(data: any): Promise<any | undefined>;
+  getUserAnalytics(userId: string): Promise<any[]>;
+  getProjectAnalytics(projectId: string): Promise<any[]>;
+
+  // Deployment Methods
+  createDeployment(data: any): Promise<any | undefined>;
+  getDeploymentsByProject(projectId: string): Promise<any[]>;
+  updateDeploymentStatus(id: string, status: string, url?: string, buildLog?: string): Promise<any | undefined>;
+
+  // Rating Methods
+  addRating(data: any): Promise<any | undefined>;
+  getItemRatings(marketplaceItemId: string): Promise<any[]>;
+  getUserRating(marketplaceItemId: string, userId: string): Promise<any | undefined>;
 }
 
 export class MemStorage implements IStorage {
@@ -196,14 +229,112 @@ export class MemStorage implements IStorage {
   async updateConversation(id: string, messages: any[], aiProvider?: string): Promise<Conversation | undefined> {
     const conversation = this.conversations.get(id);
     if (!conversation) return undefined;
-    const updated = { 
-      ...conversation, 
-      messages, 
+    const updated = {
+      ...conversation,
+      messages,
       aiProvider: aiProvider || conversation.aiProvider,
-      updatedAt: new Date() 
+      updatedAt: new Date()
     };
     this.conversations.set(id, updated);
     return updated;
+  }
+
+  // Collaboration Methods
+  async addCollaborator(data: any) {
+    const [collaboration] = await this.db
+      .insert(collaborations)
+      .values(data)
+      .returning();
+    return collaboration;
+  }
+
+  async getProjectCollaborators(projectId: string) {
+    return this.db
+      .select()
+      .from(collaborations)
+      .where(eq(collaborations.projectId, projectId));
+  }
+
+  async removeCollaborator(id: string) {
+    await this.db.delete(collaborations).where(eq(collaborations.id, id));
+    return true;
+  }
+
+  // Analytics Methods
+  async trackEvent(data: any) {
+    const [event] = await this.db
+      .insert(analyticsEvents)
+      .values(data)
+      .returning();
+    return event;
+  }
+
+  async getUserAnalytics(userId: string) {
+    return this.db
+      .select()
+      .from(analyticsEvents)
+      .where(eq(analyticsEvents.userId, userId))
+      .orderBy(analyticsEvents.timestamp);
+  }
+
+  async getProjectAnalytics(projectId: string) {
+    return this.db
+      .select()
+      .from(analyticsEvents)
+      .where(eq(analyticsEvents.projectId, projectId))
+      .orderBy(analyticsEvents.timestamp);
+  }
+
+  // Deployment Methods
+  async createDeployment(data: any) {
+    const [deployment] = await this.db
+      .insert(deployments)
+      .values(data)
+      .returning();
+    return deployment;
+  }
+
+  async getDeploymentsByProject(projectId: string) {
+    return this.db
+      .select()
+      .from(deployments)
+      .where(eq(deployments.projectId, projectId))
+      .orderBy(deployments.createdAt);
+  }
+
+  async updateDeploymentStatus(id: string, status: string, url?: string, buildLog?: string) {
+    const [deployment] = await this.db
+      .update(deployments)
+      .set({ status, url, buildLog, updatedAt: new Date() })
+      .where(eq(deployments.id, id))
+      .returning();
+    return deployment;
+  }
+
+  // Rating Methods
+  async addRating(data: any) {
+    const [rating] = await this.db
+      .insert(ratings)
+      .values(data)
+      .returning();
+    return rating;
+  }
+
+  async getItemRatings(marketplaceItemId: string) {
+    return this.db
+      .select()
+      .from(ratings)
+      .where(eq(ratings.marketplaceItemId, marketplaceItemId));
+  }
+
+  async getUserRating(marketplaceItemId: string, userId: string) {
+    const [rating] = await this.db
+      .select()
+      .from(ratings)
+      .where(
+        sql`${ratings.marketplaceItemId} = ${marketplaceItemId} AND ${ratings.userId} = ${userId}`
+      );
+    return rating;
   }
 }
 

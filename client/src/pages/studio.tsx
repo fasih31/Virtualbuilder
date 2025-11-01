@@ -16,6 +16,7 @@ import { Send, Save, Play, Loader2 } from "lucide-react";
 import type { Project } from "@shared/schema";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { DeploymentManager } from "@/components/DeploymentManager";
 
 export default function Studio() {
   const { type, id } = useParams<{ type: string; id?: string }>();
@@ -280,12 +281,21 @@ export default function Studio() {
             {type?.charAt(0).toUpperCase() + type?.slice(1)} Studio
           </p>
         </div>
-        <Button onClick={handleSave} disabled={saveMutation.isPending} data-testid="button-save-project">
-          <Save className="w-4 h-4 mr-2" />
-          {saveMutation.isPending ? "Saving..." : "Save Project"}
-        </Button>
+        <div className="flex gap-2">
+          <Button onClick={handleSave} disabled={saveMutation.isPending} data-testid="button-save-project">
+            <Save className="w-4 h-4 mr-2" />
+            {saveMutation.isPending ? "Saving..." : "Save Project"}
+          </Button>
+        </div>
       </div>
-      <div className="flex-1 overflow-hidden">{renderStudioContent()}</div>
+      <div className="flex flex-1 overflow-hidden">
+        <div className="flex-1 overflow-hidden">{renderStudioContent()}</div>
+        {id && (
+          <div className="w-80 border-l p-4 overflow-y-auto">
+            <DeploymentManager projectId={id} />
+          </div>
+        )}
+      </div>
     </div>
   );
 }

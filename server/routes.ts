@@ -291,6 +291,132 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Collaboration Routes
+  app.post("/api/projects/:projectId/collaborators", isAuthenticated, async (req, res) => {
+    try {
+      const { projectId } = req.params;
+      const { userId, role = "viewer" } = req.body;
+      const collaboration = await storage.addCollaborator({ projectId, userId, role });
+      res.json(collaboration);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get("/api/projects/:projectId/collaborators", isAuthenticated, async (req, res) => {
+    try {
+      const collaborators = await storage.getProjectCollaborators(req.params.projectId);
+      res.json(collaborators);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.delete("/api/collaborations/:id", isAuthenticated, async (req, res) => {
+    try {
+      await storage.removeCollaborator(req.params.id);
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Analytics Routes
+  app.post("/api/analytics/track", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const event = await storage.trackEvent({ userId, ...req.body });
+      res.json(event);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get("/api/analytics/user", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const analytics = await storage.getUserAnalytics(userId);
+      res.json(analytics);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get("/api/analytics/project/:projectId", isAuthenticated, async (req, res) => {
+    try {
+      const analytics = await storage.getProjectAnalytics(req.params.projectId);
+      res.json(analytics);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Deployment Routes
+  app.post("/api/projects/:projectId/deploy", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { projectId } = req.params;
+      
+      const deployment = await storage.createDeployment({
+        projectId,
+        userId,
+        status: "pending",
+      });
+
+      // Simulate deployment process
+      setTimeout(async () => {
+        await storage.updateDeploymentStatus(
+          deployment.id,
+          "deployed",
+          `https://${projectId}.virtubuild.repl.co`,
+          "Build successful"
+        );
+      }, 3000);
+
+      res.json(deployment);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get("/api/projects/:projectId/deployments", isAuthenticated, async (req, res) => {
+    try {
+      const deployments = await storage.getDeploymentsByProject(req.params.projectId);
+      res.json(deployments);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Rating Routes
+  app.post("/api/marketplace/:itemId/rate", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { itemId } = req.params;
+      const { rating, review } = req.body;
+
+      const newRating = await storage.addRating({
+        marketplaceItemId: itemId,
+        userId,
+        rating,
+        review,
+      });
+
+      res.json(newRating);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get("/api/marketplace/:itemId/ratings", async (req, res) => {
+    try {
+      const ratings = await storage.getItemRatings(req.params.itemId);
+      res.json(ratings);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
 
       const systemPrompt = `You are an expert code generator. Generate clean, well-documented ${language} code based on the user's requirements. Only return the code, no explanations.`;
       const messages = [
